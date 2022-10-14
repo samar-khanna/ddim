@@ -111,7 +111,7 @@ class Diffusion(object):
         model = torch.nn.DataParallel(model)
 
         n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print('number of params (M): %.2f' % (n_parameters / 1.e6))
+        logging.info('number of params (M): %.2f' % (n_parameters / 1.e6))
 
         optimizer = get_optimizer(self.config, model.parameters())
 
