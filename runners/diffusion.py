@@ -8,7 +8,7 @@ import tqdm
 import torch
 import torch.utils.data as data
 
-from models.diffusion import Model
+from models import get_model
 from models.ema import EMAHelper
 from functions import get_optimizer
 from functions.losses import loss_registry
@@ -105,7 +105,7 @@ class Diffusion(object):
             shuffle=True,
             num_workers=config.data.num_workers,
         )
-        model = Model(config)
+        model = get_model(config)
 
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
@@ -190,7 +190,7 @@ class Diffusion(object):
                 data_start = time.time()
 
     def sample(self):
-        model = Model(self.config)
+        model = get_model(self.config)
 
         if not self.args.use_pretrained:
             if getattr(self.config.sampling, "ckpt_id", None) is None:
