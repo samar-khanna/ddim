@@ -267,11 +267,12 @@ class Diffusion(object):
                 x = self.sample_image(x, model)
                 x = inverse_data_transform(config, x)
 
-                for i in range(n):
-                    tvu.save_image(
-                        x[i], os.path.join(self.args.image_folder, f"{img_id}.png")
-                    )
-                    img_id += 1
+                tvu.save_image(x, os.path.join(self.args.image_folder, f"image_grid.png"), n_row=int(np.sqrt(x.shape[0])))
+                # for i in range(n):
+                #     tvu.save_image(
+                #         x[i], os.path.join(self.args.image_folder, f"{img_id}.png")
+                #     )
+                #     img_id += 1
 
     def sample_sequence(self, model):
         config = self.config
