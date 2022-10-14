@@ -14,11 +14,11 @@ model:
     in_channels: 3
     patch_size: 4
     encoder:
-        embed_dim: 256
+        embed_dim: 512
         depth: 12
         num_heads: 8
     decoder:
-        embed_dim: 256
+        embed_dim: 512
         depth: 12
         num_heads: 8
     mlp_ratio: 4
