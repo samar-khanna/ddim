@@ -110,6 +110,9 @@ class Diffusion(object):
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
 
+        n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print('number of params (M): %.2f' % (n_parameters / 1.e6))
+
         optimizer = get_optimizer(self.config, model.parameters())
 
         if self.config.model.ema:
