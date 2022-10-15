@@ -17,6 +17,25 @@ import torch.nn as nn
 import timm.models.vision_transformer
 from models.pos_embed import get_2d_sincos_pos_embed
 
+def get_timestep_embedding(timesteps, embedding_dim):
+    """
+    This matches the implementation in Denoising Diffusion Probabilistic Models:
+    From Fairseq.
+    Build sinusoidal embeddings.
+    This matches the implementation in tensor2tensor, but differs slightly
+    from the description in Section 3.5 of "Attention Is All You Need".
+    """
+    assert len(timesteps.shape) == 1
+
+    half_dim = embedding_dim // 2
+    emb = math.log(10000) / (half_dim - 1)
+    emb = torch.exp(torch.arange(half_dim, dtype=torch.float32) * -emb)
+    emb = emb.to(device=timesteps.device)
+    emb = timesteps.float()[:, None] * emb[None, :]
+    emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1)
+    if embedding_dim % 2 == 1:  # zero pad
+        emb = torch.nn.functional.pad(emb, (0, 1, 0, 0))
+    return emb
 
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
@@ -37,15 +56,18 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
             del self.norm  # remove the original norm
 
-    def forward_features(self, x):
+    def forward_features(self, x,time):
+
+
         B = x.shape[0]
         x = self.patch_embed(x)
+        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
 
         cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         x = torch.cat((cls_tokens, x), dim=1)
         x = x + self.pos_embed
         x = self.pos_drop(x)
-
+        x = x + time
         for blk in self.blocks:
             x = blk(x)
 
@@ -55,8 +77,11 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         else:
             x = self.norm(x)
             outcome = x[:, 0]
+        #remove cls token
+        x = x[:, 1:, :]
 
-        return outcome
+
+        return x
 
 
 def vit_base_patch16(**kwargs):

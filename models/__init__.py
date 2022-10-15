@@ -1,7 +1,6 @@
 from models.models_unet import UNet
 from models.models_mae import MaskedAutoencoderViT
-
-
+from models.models_vit import VisionTransformer
 def get_model(config):
     if config.model.type == "unet" or config.model.type == "simple":
         ch, out_ch, ch_mult = config.model.ch, config.model.out_ch, tuple(config.model.ch_mult)
@@ -39,6 +38,8 @@ def get_model(config):
 
         mlp_ratio = config.model.mlp_ratio
 
+
+
         return MaskedAutoencoderViT(
             img_size=img_size,
             patch_size=patch_size,
@@ -49,6 +50,39 @@ def get_model(config):
             decoder_embed_dim=decoder_embed_dim,
             decoder_depth=decoder_depth,
             decoder_num_heads=decoder_num_heads,
+            mlp_ratio=mlp_ratio,
+        )
+    elif config.model.type=='vit':
+        img_size = config.data.image_size,
+        patch_size = config.model.patch_size,
+        in_chans = config.model.in_channels,
+        #num_classes = 1000,
+        #global_pool = 'token',
+        embed_dim = config.model.encoder.embed_dim,
+        depth = config.model.encoder.depth,
+        num_heads = config.model.encoder.num_heads,
+        mlp_ratio = config.model.mlp_ratio,
+        # qkv_bias = True,
+        # init_values = None,
+        # class_token = True,
+        # no_embed_class = False,
+        # pre_norm = False,
+        # fc_norm = None,
+        # drop_rate = 0.,
+        # attn_drop_rate = 0.,
+        # drop_path_rate = 0.,
+        # weight_init = '',
+        # embed_layer = PatchEmbed,
+        # norm_layer = None,
+        # act_layer = None,
+        # block_fn = Block,
+        return VisionTransformer(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_chans=in_chans,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
             mlp_ratio=mlp_ratio,
         )
     else:
