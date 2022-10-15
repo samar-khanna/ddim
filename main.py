@@ -170,7 +170,7 @@ def parse_args_and_config():
         if args.sample:
             os.makedirs(os.path.join(args.exp, "image_samples"), exist_ok=True)
             args.image_folder = os.path.join(
-                args.exp, "image_samples", args.image_folder
+                args.exp, "image_samples", args.doc, args.image_folder
             )
             if not os.path.exists(args.image_folder):
                 os.makedirs(args.image_folder)
