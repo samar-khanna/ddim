@@ -14,13 +14,13 @@ model:
     in_channels: 3
     patch_size: 4
     encoder:
-        embed_dim: 512
+        embed_dim: 384
         depth: 12
-        num_heads: 8
+        num_heads: 6
     decoder:
-        embed_dim: 512
+        embed_dim: 384
         depth: 12
-        num_heads: 8
+        num_heads: 6
     mlp_ratio: 4
 
     var_type: fixedlarge
