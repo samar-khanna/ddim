@@ -124,7 +124,8 @@ class Diffusion(object):
             ema_helper = None
 
         # Watch model (W&B)
-        wandb.watch(model)
+        if self.args.wandb is not None:
+            wandb.watch(model)
 
         start_epoch, step = 0, 0
         if self.args.resume_training:
@@ -177,7 +178,8 @@ class Diffusion(object):
                     f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
                 )
 
-                wandb.log({'Train/loss': loss.item(), 'Train/step': step})
+                if self.args.wandb is not None:
+                    wandb.log({'Train/loss': loss.item(), 'Train/step': step})
 
                 if self.config.model.ema:
                     ema_helper.update(model)

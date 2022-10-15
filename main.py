@@ -41,6 +41,11 @@ def parse_args_and_config():
         default="info",
         help="Verbose level: info | debug | warning | critical",
     )
+
+    parser.add_argument('--wandb', type=str, nargs='?', const='mae-diffusion-train', default=None,
+                        help="W&B project name. If None, W&B is not used. "
+                             "If project name not provided, default is: mae-diffusion-train")
+
     parser.add_argument("--test", action="store_true", help="Whether to test the model")
     parser.add_argument(
         "--sample",
@@ -99,15 +104,17 @@ def parse_args_and_config():
     tb_path = os.path.join(args.exp, "tensorboard", args.doc)
 
     # Wandb setup
-    project_type = 'train'
-    if args.sample:
-        project_type = 'sample'
-    elif args.test:
-        project_type = 'test'
+    if args.wandb is not None:
+        project_name = args.wandb
+        if project_name == 'mae-diffusion-train':
+            if args.sample:
+                project_name = 'mae-diffusion-sample'
+            elif args.test:
+                project_name = 'mae-diffusion-test'
 
-    wandb.init(project="mae-diffusion-" + project_type, entity="bias_migitation")
-    wandb.config.update(args)
-    wandb.config.update(config)
+        wandb.init(project=project_name, entity="bias_migitation")
+        wandb.config.update(args)
+        wandb.config.update(config)
 
     if not args.test and not args.sample:
         if not args.resume_training:
