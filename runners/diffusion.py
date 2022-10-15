@@ -4,6 +4,7 @@ import time
 import glob
 
 import numpy as np
+import wandb
 import tqdm
 import torch
 import torch.utils.data as data
@@ -110,6 +111,7 @@ class Diffusion(object):
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
 
+        # Get model info
         n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logging.info('number of params (M): %.2f' % (n_parameters / 1.e6))
 
@@ -120,6 +122,9 @@ class Diffusion(object):
             ema_helper.register(model)
         else:
             ema_helper = None
+
+        # Watch model (W&B)
+        wandb.watch(model)
 
         start_epoch, step = 0, 0
         if self.args.resume_training:
@@ -154,12 +159,6 @@ class Diffusion(object):
                 t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
                 loss = loss_registry[config.model.type](model, x, t, e, b)
 
-                tb_logger.add_scalar("loss", loss, global_step=step)
-
-                logging.info(
-                    f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
-                )
-
                 optimizer.zero_grad()
                 loss.backward()
 
@@ -170,6 +169,15 @@ class Diffusion(object):
                 except Exception:
                     pass
                 optimizer.step()
+
+                # Log info
+                tb_logger.add_scalar("loss", loss, global_step=step)
+
+                logging.info(
+                    f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
+                )
+
+                wandb.log({'Train/loss': loss.item(), 'Train/step': step})
 
                 if self.config.model.ema:
                     ema_helper.update(model)

@@ -6,6 +6,7 @@ import yaml
 import sys
 import os
 import torch
+import wandb
 import numpy as np
 import torch.utils.tensorboard as tb
 
@@ -96,6 +97,17 @@ def parse_args_and_config():
     new_config = dict2namespace(config)
 
     tb_path = os.path.join(args.exp, "tensorboard", args.doc)
+
+    # Wandb setup
+    project_type = 'train'
+    if args.sample:
+        project_type = 'sample'
+    elif args.test:
+        project_type = 'test'
+
+    wandb.init(project="mae-diffusion-" + project_type, entity="bias_migitation")
+    wandb.config.update(args)
+    wandb.config.update(config)
 
     if not args.test and not args.sample:
         if not args.resume_training:
