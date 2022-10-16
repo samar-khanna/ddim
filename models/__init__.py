@@ -1,6 +1,9 @@
 from models.models_unet import UNet
 from models.models_mae import MaskedAutoencoderViT
 from models.models_vit import VisionTransformer
+from models.segmenter.segm.model.factory import create_segmenter
+
+
 def get_model(config):
     if config.model.type == "unet" or config.model.type == "simple":
         ch, out_ch, ch_mult = config.model.ch, config.model.out_ch, tuple(config.model.ch_mult)
@@ -38,8 +41,6 @@ def get_model(config):
 
         mlp_ratio = config.model.mlp_ratio
 
-
-
         return MaskedAutoencoderViT(
             img_size=img_size,
             patch_size=patch_size,
@@ -52,12 +53,12 @@ def get_model(config):
             decoder_num_heads=decoder_num_heads,
             mlp_ratio=mlp_ratio,
         )
-    elif config.model.type=='vit':
+    elif config.model.type == 'vit':
         img_size = config.data.image_size
         patch_size = config.model.patch_size
         in_chans = config.model.in_channels
-        #num_classes = 1000,
-        #global_pool = 'token',
+        # num_classes = 1000,
+        # global_pool = 'token',
         embed_dim = config.model.encoder.embed_dim
         depth = config.model.encoder.depth
         num_heads = config.model.encoder.num_heads
@@ -85,5 +86,34 @@ def get_model(config):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
         )
+    elif config.model.type == "vit_segm":
+        # img_size = config.data.image_size
+        # patch_size = config.model.patch_size
+        # in_channels = config.model.in_channels
+        #
+        # embed_dim = config.model.encoder.embed_dim
+        # depth = config.model.encoder.depth
+        # num_attn_heads = config.model.encoder.num_heads
+        #
+        # decoder_embed_dim = config.model.decoder.embed_dim
+        # decoder_depth = config.model.decoder.depth
+        # decoder_num_heads = config.model.decoder.num_heads
+
+        # mlp_ratio = config.model.mlp_ratio
+        model_cfg = dict()
+        decoder = dict()
+        decoder['name'] = config.model.decoder.name
+        # decoder['d_encoder']=
+        # decoder['patch_size']=
+        model_cfg["image_size"] = (config.data.image_size, config.data.image_size)
+        model_cfg["backbone"] = config.model.backbone
+        model_cfg["dropout"] = config.model.dropout
+        model_cfg["drop_path_rate"] = config.model.drop_path_rate
+        model_cfg["name"] = decoder
+
+        # model_cfg["normalization"]
+
+        model = create_segmenter(model_cfg)
+        return model
     else:
         raise NotImplementedError("Wrong model type")

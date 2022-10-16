@@ -20,4 +20,6 @@ loss_registry = {
     'unet': noise_estimation_loss,
     'vit_mae': noise_estimation_loss,
     'vit':noise_estimation_loss,
+    'vit_seg': noise_estimation_loss,
+
 }
