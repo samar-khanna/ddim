@@ -53,15 +53,15 @@ def get_model(config):
             mlp_ratio=mlp_ratio,
         )
     elif config.model.type=='vit':
-        img_size = config.data.image_size,
-        patch_size = config.model.patch_size,
-        in_chans = config.model.in_channels,
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_chans = config.model.in_channels
         #num_classes = 1000,
         #global_pool = 'token',
-        embed_dim = config.model.encoder.embed_dim,
-        depth = config.model.encoder.depth,
-        num_heads = config.model.encoder.num_heads,
-        mlp_ratio = config.model.mlp_ratio,
+        embed_dim = config.model.encoder.embed_dim
+        depth = config.model.encoder.depth
+        num_heads = config.model.encoder.num_heads
+        mlp_ratio = config.model.mlp_ratio
         # qkv_bias = True,
         # init_values = None,
         # class_token = True,
