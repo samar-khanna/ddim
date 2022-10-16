@@ -10,9 +10,10 @@ data:
     num_workers: 4
 
 model:
-    type: "vit_mae"
+    type: "vit_mae_temb"
     in_channels: 3
     patch_size: 4
+    temb_dim: 512
     encoder:
         embed_dim: 384
         depth: 12

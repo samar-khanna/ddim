@@ -47,6 +47,7 @@ class MaskedAutoencoderViT(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3,
                  embed_dim=1024, depth=24, num_heads=16,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 temb_dim=0, dropout=0.1,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False):
         super().__init__()
 
@@ -54,6 +55,20 @@ class MaskedAutoencoderViT(nn.Module):
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
+
+        # Temporal embedding stuff for diffusion
+        self.temb = nn.Identity()
+        self.temb_blocks = nn.ModuleList([nn.Identity() for _ in range(depth)])
+        if temb_dim > 0:
+            self.temb = nn.Sequential(
+                nn.Linear(embed_dim, temb_dim),
+                nn.SiLU(),
+                nn.Linear(temb_dim, temb_dim),
+            )
+            self.temb_blocks = nn.ModuleList([
+                nn.Sequential(nn.SiLU(), nn.Linear(temb_dim, embed_dim))
+                for _ in range(depth)])
+
         self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
         num_patches = self.patch_embed.num_patches
 
@@ -61,13 +76,27 @@ class MaskedAutoencoderViT(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), requires_grad=False)  # fixed sin-cos embedding
 
         self.blocks = nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
+            Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None,
+                  norm_layer=norm_layer, drop=dropout)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
         # --------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------
         # MAE decoder specifics
+
+        self.decoder_temb = nn.Identity()
+        self.decoder_temb_blocks = nn.ModuleList([nn.Identity() for _ in range(decoder_depth)])
+        if temb_dim > 0:
+            self.decoder_temb = nn.Sequential(
+                nn.Linear(decoder_embed_dim, temb_dim),
+                nn.SiLU(),
+                nn.Linear(temb_dim, temb_dim),
+            )
+            self.decoder_temb_blocks = nn.ModuleList([
+                nn.Sequential(nn.SiLU(), nn.Linear(temb_dim, decoder_embed_dim))
+                for _ in range(decoder_depth)])
+
         self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
 
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
@@ -75,7 +104,8 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim), requires_grad=False)  # fixed sin-cos embedding
 
         self.decoder_blocks = nn.ModuleList([
-            Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
+            Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None,
+                  norm_layer=norm_layer, drop=dropout)
             for i in range(decoder_depth)])
 
         self.decoder_norm = norm_layer(decoder_embed_dim)
@@ -184,6 +214,7 @@ class MaskedAutoencoderViT(nn.Module):
         # embed time
         time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
         time = time.unsqueeze(1)  # (N, 1, D)
+        temb = self.temb(time)  # (N, 1, D_t)
 
         # add pos embed w/o cls token
         x = x + self.pos_embed[:, 1:, :]  # (N, L, D)
@@ -196,12 +227,9 @@ class MaskedAutoencoderViT(nn.Module):
         cls_tokens = cls_token.expand(x.shape[0], -1, -1)  # (N, 1, D)
         x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
 
-        # add time embed
-        x = x + time  # (N, L, D)
-
-        # apply Transformer blocks
-        for blk in self.blocks:
-            x = blk(x)
+        # apply Transformer blocks with time
+        for i, blk in enumerate(self.blocks):
+            x = blk(x + self.temb_blocks[i](temb))  # (N, L, D)
         x = self.norm(x)
 
         # return x, mask, ids_restore
@@ -214,6 +242,7 @@ class MaskedAutoencoderViT(nn.Module):
         # embed time
         time = get_timestep_embedding(time, x.shape[-1])  # (N, D')
         time = time.unsqueeze(1)  # (N, 1, D')
+        temb = self.decoder_temb(time)  # (N, 1, D_t)
 
         # # append mask tokens to sequence
         # mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
@@ -224,12 +253,9 @@ class MaskedAutoencoderViT(nn.Module):
         # add pos embed
         x = x + self.decoder_pos_embed  # (N, L, D')
 
-        # add time embed
-        x = x + time
-
         # apply Transformer blocks
-        for blk in self.decoder_blocks:
-            x = blk(x)
+        for i, blk in enumerate(self.decoder_blocks):
+            x = blk(x + self.decoder_temb_blocks[i](temb))  # (N, L, D_t)
         x = self.decoder_norm(x)
 
         # predictor projection
