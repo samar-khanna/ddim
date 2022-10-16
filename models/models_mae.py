@@ -41,6 +41,14 @@ def get_timestep_embedding(timesteps, embedding_dim):
     return emb
 
 
+class ZerosLike(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.zeros_like(x)
+
+
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
@@ -58,7 +66,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         # Temporal embedding stuff for diffusion
         self.temb = nn.Identity()
-        self.temb_blocks = nn.ModuleList([nn.Identity() for _ in range(depth)])
+        self.temb_blocks = nn.ModuleList([nn.Identity()] + [ZerosLike() for _ in range(1, depth)])
         if temb_dim > 0:
             self.temb = nn.Sequential(
                 nn.Linear(embed_dim, temb_dim),
@@ -86,7 +94,7 @@ class MaskedAutoencoderViT(nn.Module):
         # MAE decoder specifics
 
         self.decoder_temb = nn.Identity()
-        self.decoder_temb_blocks = nn.ModuleList([nn.Identity() for _ in range(decoder_depth)])
+        self.decoder_temb_blocks = nn.ModuleList([nn.Identity()] + [ZerosLike() for _ in range(1, decoder_depth)])
         if temb_dim > 0:
             self.decoder_temb = nn.Sequential(
                 nn.Linear(decoder_embed_dim, temb_dim),
