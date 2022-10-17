@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from timm.models.layers import trunc_normal_
 
-import segm.utils.torch as ptu
+import models.segm.utils.torch as ptu
 
 
 def init_weights(m):

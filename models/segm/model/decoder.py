@@ -1,4 +1,5 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,8 +7,8 @@ from einops import rearrange
 
 from timm.models.layers import trunc_normal_
 
-from segm.model.blocks import Block, FeedForward
-from segm.model.utils import init_weights
+from models.segm.model.blocks import Block, FeedForward
+from models.segm.model.utils import init_weights
 
 
 class DecoderLinear(nn.Module):

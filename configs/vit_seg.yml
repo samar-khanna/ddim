@@ -10,8 +10,8 @@ data:
     num_workers: 4
 
 model:
-    type: "vit"
-#    in_channels: 3
+    type: "vit_seg"
+    in_channels: 3
 #    patch_size: 4
 #
 #    embed_dim: 384
