@@ -19,4 +19,5 @@ loss_registry = {
     'simple': noise_estimation_loss,
     'unet': noise_estimation_loss,
     'vit_mae': noise_estimation_loss,
+    'vit_mae_temb': noise_estimation_loss,
 }
