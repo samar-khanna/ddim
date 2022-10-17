@@ -51,5 +51,34 @@ def get_model(config):
             decoder_num_heads=decoder_num_heads,
             mlp_ratio=mlp_ratio,
         )
+    elif config.model.type == "vit_mae_temb":
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+
+        embed_dim = config.model.encoder.embed_dim
+        depth = config.model.encoder.depth
+        num_attn_heads = config.model.encoder.num_heads
+
+        decoder_embed_dim = config.model.decoder.embed_dim
+        decoder_depth = config.model.decoder.depth
+        decoder_num_heads = config.model.decoder.num_heads
+
+        temb_dim = config.model.temb_dim
+        mlp_ratio = config.model.mlp_ratio
+
+        return MaskedAutoencoderViT(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_chans=in_channels,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_attn_heads,
+            decoder_embed_dim=decoder_embed_dim,
+            decoder_depth=decoder_depth,
+            decoder_num_heads=decoder_num_heads,
+            temb_dim=temb_dim,
+            mlp_ratio=mlp_ratio,
+        )
     else:
         raise NotImplementedError("Wrong model type")
