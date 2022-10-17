@@ -103,13 +103,23 @@ def get_model(config):
         model_cfg = dict()
         decoder = dict()
         decoder['name'] = config.model.decoder.name
+        decoder['dropout'] =config.model.decoder.mask_transformer.dropout
+        decoder['drop_path_rate'] =config.model.decoder.mask_transformer.drop_path_rate
+        decoder['n_layers'] =config.model.decoder.mask_transformer.n_layers
         # decoder['d_encoder']=
         # decoder['patch_size']=
+        model_cfg["n_cls"]=config.model.n_cls
         model_cfg["image_size"] = (config.data.image_size, config.data.image_size)
+        model_cfg["patch_size"]=config.model.patch_size
+        model_cfg["d_model"]=config.model.d_model
+        model_cfg["n_heads"]=config.model.n_heads
+        model_cfg["n_layers"]=config.model.n_layers
+        
         model_cfg["backbone"] = config.model.backbone
         model_cfg["dropout"] = config.model.dropout
         model_cfg["drop_path_rate"] = config.model.drop_path_rate
-        model_cfg["name"] = decoder
+        model_cfg["decoder"] = decoder
+        model_cfg["normalization"]=config.model.normalization
 
         # model_cfg["normalization"]
 
