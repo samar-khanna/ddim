@@ -66,10 +66,11 @@ def create_vit(model_cfg):
     )
     model = VisionTransformer(**model_cfg)
     if backbone == "vit_base_patch8_384":
-        path = os.path.expandvars("$TORCH_HOME/hub/checkpoints/vit_base_patch8_384.pth")
-        state_dict = torch.load(path, map_location="cpu")
-        filtered_dict = checkpoint_filter_fn(state_dict, model)
-        model.load_state_dict(filtered_dict, strict=True)
+     #   path = os.path.expandvars("$TORCH_HOME/hub/checkpoints/vit_base_patch8_384.pth")
+      pass
+      #state_dict = torch.load(path, map_location="cpu")
+       # filtered_dict = checkpoint_filter_fn(state_dict, model)
+       # model.load_state_dict(filtered_dict, strict=True)
     elif "deit" in backbone:
         load_pretrained(model, default_cfg, filter_fn=checkpoint_filter_fn)
     else:
