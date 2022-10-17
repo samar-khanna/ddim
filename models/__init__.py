@@ -1,7 +1,7 @@
 from models.models_unet import UNet
 from models.models_mae import MaskedAutoencoderViT
 from models.models_vit import VisionTransformer
-from models.segmenter.segm.model.factory import create_segmenter
+from models.segm.model.factory import create_segmenter
 
 
 def get_model(config):
