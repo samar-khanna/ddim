@@ -14,16 +14,16 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-import timm.models.vision_transformer
+import timm.models.vision_transformer as vit
 
 from models.pos_embed import get_2d_sincos_pos_embed
 from models.time_embed import get_timestep_embedding, ZerosLike
 
 
-class UVisionTransformer(timm.models.vision_transformer.VisionTransformer):
+class UVisionTransformer(vit.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, temb_dim=0, **kwargs):
+    def __init__(self, temb_dim=0, use_final_conv=True, **kwargs):
         super().__init__(**kwargs)
 
         self.patch_size = kwargs['patch_size']
@@ -57,7 +57,8 @@ class UVisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
         self.decoder_pred = nn.Linear(embed_dim, self.patch_size ** 2 * self.in_c, bias=True)  # decoder to patch
 
-        self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same')
+        self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same') \
+            if use_final_conv else nn.Identity()
 
         # self.global_pool = global_pool
         # if self.global_pool:
