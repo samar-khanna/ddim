@@ -23,7 +23,7 @@ from models.time_embed import get_timestep_embedding, ZerosLike
 class UVisionTransformer(vit.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, temb_dim=0, use_final_conv=True, **kwargs):
+    def __init__(self, temb_dim=0, skip_rate=1, use_final_conv=True, **kwargs):
         super().__init__(**kwargs)
 
         self.patch_size = kwargs['patch_size']
@@ -50,10 +50,16 @@ class UVisionTransformer(vit.VisionTransformer):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         # Add a projection for each skip connection
-        self.skip_projs = nn.ModuleList([
-            nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
-            for _ in range(len(self.blocks)//2)
-        ])
+        self.skip_idxs = {}
+        self.skip_projs = {}
+        for i in range(depth//2):
+            # Only add skip connections every skip_rate blocks
+            if (i + 1) % skip_rate == 0:
+                # If num blocks between blocks is too small, then don't add skip
+                if depth - 2*(i + 1) > skip_rate:
+                    self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
+                    self.skip_projs[depth-(i+1)] = nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
+        print(f"Using skip connections: {self.skip_idxs}")
 
         self.decoder_pred = nn.Linear(embed_dim, self.patch_size ** 2 * self.in_c, bias=True)  # decoder to patch
 
@@ -123,29 +129,20 @@ class UVisionTransformer(vit.VisionTransformer):
         time = time.unsqueeze(1)  # (N, 1, D)
         temb = self.temb(time)  # (N, 1, D_t)
 
-        t_idx = 0
-        num_low_res_blocks = len(self.blocks)//2
-        xs = []
-        for blk in self.blocks[:num_low_res_blocks]:
-            x = blk(x + self.temb_blocks[t_idx](temb))  # (N, L+1, D)
-            xs.append(x)
-            t_idx += 1
+        xs = {}
+        for i, blk in enumerate(self.blocks):
+            if i in xs:
+                # This is for deeper layers to use previous xs
+                prev_x = xs[i]
+                x = torch.cat((x, prev_x), dim=-1)  # (N, L+1, 2D)
+                x = self.skip_projs[i](x)  # (N, L+1, D)
 
-        # Reverse xs as we want lowest res last
-        xs = xs[::-1]
+            x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
 
-        # mid block
-        x = self.blocks[num_low_res_blocks](x + self.temb_blocks[t_idx](temb))  # (N, L+1, D)
-        t_idx += 1
-
-        # up blocks
-        for i, blk in enumerate(self.blocks[num_low_res_blocks+1:]):
-            prev_x = xs[i]
-            x = torch.cat((x, prev_x), dim=-1)  # (N, L+1, 2D)
-            x = self.skip_projs[i](x)  # (N, L+1, D)
-
-            x = blk(x + self.temb_blocks[t_idx](temb))  # (N, L+1, D)
-            t_idx += 1
+            if i in self.skip_idxs:
+                # Earlier layers save their xs
+                end = self.skip_idxs[i]
+                xs[end] = x
 
         x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
 

@@ -17,6 +17,8 @@ model:
     temb_dim: 512
     depth: 13
     num_heads: 6
+
+    skip_rate: 2
     use_final_conv: false
 
     dropout: 0.1

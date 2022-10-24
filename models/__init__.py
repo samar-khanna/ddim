@@ -65,6 +65,8 @@ def get_model(config):
         num_attn_heads = config.model.num_heads
 
         use_final_conv = config.model.use_final_conv
+        skip_rate = config.model.skip_rate
+
         temb_dim = config.model.temb_dim
         mlp_ratio = config.model.mlp_ratio
         dropout = config.model.dropout
@@ -80,6 +82,7 @@ def get_model(config):
             mlp_ratio=mlp_ratio,
             drop_rate=dropout,
             temb_dim=temb_dim,
+            skip_rate=skip_rate,
             use_final_conv=use_final_conv,
         )
     else:
