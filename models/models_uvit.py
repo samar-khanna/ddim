@@ -51,14 +51,15 @@ class UVisionTransformer(vit.VisionTransformer):
 
         # Add a projection for each skip connection
         self.skip_idxs = {}
-        self.skip_projs = {}
+        skip_projs = {}
         for i in range(depth//2):
             # Only add skip connections every skip_rate blocks
             if (i + 1) % skip_rate == 0:
                 # If num blocks between blocks is too small, then don't add skip
                 if depth - 2*(i + 1) > skip_rate:
                     self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
-                    self.skip_projs[depth-(i+1)] = nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
+                    skip_projs[depth-(i+1)] = nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
+        self.skip_projs = nn.ModuleDict(skip_projs)
         print(f"Using skip connections: {self.skip_idxs}")
 
         self.decoder_pred = nn.Linear(embed_dim, self.patch_size ** 2 * self.in_c, bias=True)  # decoder to patch
