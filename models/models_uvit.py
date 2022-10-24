@@ -59,7 +59,7 @@ class UVisionTransformer(vit.VisionTransformer):
                 if depth - 2*(i + 1) > skip_rate:
                     self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
                     skip_projs[depth-(i+1)] = nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
-        self.skip_projs = nn.ModuleDict(skip_projs)
+        self.skip_projs = nn.ModuleDict({str(i): module for i, module in skip_projs.items()})
         print(f"Using skip connections: {self.skip_idxs}")
 
         self.decoder_pred = nn.Linear(embed_dim, self.patch_size ** 2 * self.in_c, bias=True)  # decoder to patch
@@ -136,7 +136,7 @@ class UVisionTransformer(vit.VisionTransformer):
                 # This is for deeper layers to use previous xs
                 prev_x = xs[i]
                 x = torch.cat((x, prev_x), dim=-1)  # (N, L+1, 2D)
-                x = self.skip_projs[i](x)  # (N, L+1, D)
+                x = self.skip_projs[str(i)](x)  # (N, L+1, D)
 
             x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
 
