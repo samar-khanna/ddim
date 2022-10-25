@@ -1,8 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 # --------------------------------------------------------
 # References:
 # timm: https://github.com/rwightman/pytorch-image-models/tree/master/timm
@@ -74,8 +69,6 @@ class UVisionTransformer(vit.VisionTransformer):
         #     embed_dim = kwargs['embed_dim']
         #     self.fc_norm = norm_layer(embed_dim)
 
-        del self.norm  # remove the original norm
-
     def patchify(self, imgs, p, c):
         """
         imgs: (N, C, H, W)
@@ -145,6 +138,8 @@ class UVisionTransformer(vit.VisionTransformer):
                 # Earlier layers save their xs
                 end = self.skip_idxs[i]
                 xs[end] = x
+
+        x = self.norm(x)
 
         x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
 
