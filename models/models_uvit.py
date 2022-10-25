@@ -30,6 +30,7 @@ class UVisionTransformer(vit.VisionTransformer):
         self.in_c = kwargs['in_chans']
         embed_dim = kwargs['embed_dim']
         depth = kwargs['depth']
+        dropout = kwargs['drop_rate']
 
         # Temporal embedding stuff for diffusion
         self.temb = nn.Identity()
@@ -58,7 +59,7 @@ class UVisionTransformer(vit.VisionTransformer):
                 # If num blocks between blocks is too small, then don't add skip
                 if depth - 2*(i + 1) > skip_rate:
                     self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
-                    skip_projs[depth-(i+1)] = nn.Linear(2*self.embed_dim, self.embed_dim, bias=True)
+                    skip_projs[depth-(i+1)] = vit.Mlp(in_features=2*embed_dim, out_features=embed_dim, drop=dropout)
         self.skip_projs = nn.ModuleDict({str(i): module for i, module in skip_projs.items()})
         print(f"Using skip connections: {self.skip_idxs}")
 
