@@ -1,4 +1,5 @@
 from models.models_unet import UNet
+from models.models_vit import VisionTransformer
 from models.models_mae import MaskedAutoencoderViT
 from models.models_uvit import UVisionTransformer
 
@@ -55,6 +56,33 @@ def get_model(config):
             temb_dim=temb_dim,
             mlp_ratio=mlp_ratio,
             dropout=dropout,
+        )
+    elif config.model.type == 'vit':
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+        embed_dim = config.model.embed_dim
+        depth = config.model.depth
+        num_attn_heads = config.model.num_heads
+
+        use_final_conv = config.model.use_final_conv
+
+        temb_dim = config.model.temb_dim
+        mlp_ratio = config.model.mlp_ratio
+        dropout = config.model.dropout
+
+        return VisionTransformer(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_chans=in_channels,
+            num_classes=0,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_attn_heads,
+            mlp_ratio=mlp_ratio,
+            drop_rate=dropout,
+            temb_dim=temb_dim,
+            use_final_conv=use_final_conv,
         )
     elif config.model.type == 'uvit':
         img_size = config.data.image_size

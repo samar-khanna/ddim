@@ -18,6 +18,7 @@ def noise_estimation_loss(model,
 loss_registry = {
     'simple': noise_estimation_loss,
     'unet': noise_estimation_loss,
+    'vit': noise_estimation_loss,
     'vit_mae': noise_estimation_loss,
     'vit_mae_temb': noise_estimation_loss,
     'uvit': noise_estimation_loss,
