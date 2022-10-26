@@ -171,6 +171,9 @@ class Diffusion(object):
                     pass
                 optimizer.step()
 
+                if self.config.model.ema:
+                    ema_helper.update(model)
+
                 # Log info
                 tb_logger.add_scalar("loss", loss, global_step=step)
 
@@ -180,9 +183,6 @@ class Diffusion(object):
 
                 if self.args.wandb is not None:
                     wandb.log({'Train/loss': loss.item(), 'Train/step': step})
-
-                if self.config.model.ema:
-                    ema_helper.update(model)
 
                 if step % self.config.training.snapshot_freq == 0 or step == 1:
                     states = [
