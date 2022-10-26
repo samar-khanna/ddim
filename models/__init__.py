@@ -72,7 +72,7 @@ def get_model(config):
         decoder_num_heads = config.model.decoder.num_heads
 
         use_final_conv = config.model.use_final_conv
-        skip_idxs = config.model.skip_idxs
+        skip_idxs = dict(config.model.skip_idxs)
         use_add_skip = config.model.use_add_skip
 
         temb_dim = config.model.temb_dim
