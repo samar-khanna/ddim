@@ -18,7 +18,7 @@ from models.time_embed import get_timestep_embedding, ZerosLike
 class UVisionTransformer(vit.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, temb_dim=0, skip_rate=1, use_final_conv=True, **kwargs):
+    def __init__(self, temb_dim=0, skip_rate=1, use_add_skip=False, use_final_conv=True, **kwargs):
         super().__init__(**kwargs)
 
         self.patch_size = kwargs['patch_size']
@@ -46,6 +46,7 @@ class UVisionTransformer(vit.VisionTransformer):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         # Add a projection for each skip connection
+        self.use_add_skip = use_add_skip
         self.skip_idxs = {}
         skip_projs = {}
         for i in range(depth//2):
@@ -54,7 +55,8 @@ class UVisionTransformer(vit.VisionTransformer):
                 # If num blocks between blocks is too small, then don't add skip
                 if depth - 2*(i + 1) > skip_rate:
                     self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
-                    skip_projs[depth-(i+1)] = vit.Mlp(in_features=2*embed_dim, out_features=embed_dim, drop=dropout)
+                    skip_projs[depth-(i+1)] = vit.Mlp(in_features=2*embed_dim, out_features=embed_dim, drop=dropout) \
+                        if not use_add_skip else nn.Identity()
         self.skip_projs = nn.ModuleDict({str(i): module for i, module in skip_projs.items()})
         print(f"Using skip connections: {self.skip_idxs}")
 
@@ -129,7 +131,11 @@ class UVisionTransformer(vit.VisionTransformer):
             if i in xs:
                 # This is for deeper layers to use previous xs
                 prev_x = xs[i]
-                x = torch.cat((x, prev_x), dim=-1)  # (N, L+1, 2D)
+                if self.use_add_skip:
+                    x = x + prev_x  # (N, L+1, D)
+                else:
+                    x = torch.cat((x, prev_x), dim=-1)  # (N, L+1, 2D)
+
                 x = self.skip_projs[str(i)](x)  # (N, L+1, D)
 
             x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)

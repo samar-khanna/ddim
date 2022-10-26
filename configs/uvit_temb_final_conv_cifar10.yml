@@ -18,6 +18,7 @@ model:
     depth: 13
     num_heads: 6
 
+    use_add_skip: false
     skip_rate: 2
     use_final_conv: true
 
