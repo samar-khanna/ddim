@@ -15,8 +15,8 @@ model:
     patch_size: 2
     embed_dim: 384
     temb_dim: 512
-    depth: 24
-    num_heads: 12
+    depth: 16
+    num_heads: 8
 
     use_final_conv: false
 
