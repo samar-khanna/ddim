@@ -92,7 +92,7 @@ class UMaskedAutoencoderViT(nn.Module):
         self.skip_idxs = skip_idxs
         skip_projs = {}
         for enc_idx, dec_idx in skip_idxs.items():
-            self.skip_projs[dec_idx] = Mlp(in_features=2*embed_dim, out_features=decoder_embed_dim, drop=dropout) \
+            skip_projs[dec_idx] = Mlp(in_features=2*embed_dim, out_features=decoder_embed_dim, drop=dropout) \
                         if not use_add_skip else nn.Identity()
         self.skip_projs = nn.ModuleDict({str(i): module for i, module in skip_projs.items()})
         print(f"Using skip connections: {self.skip_idxs}")
