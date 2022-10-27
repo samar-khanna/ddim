@@ -1,0 +1,61 @@
+data:
+    dataset: "CIFAR10"
+    image_size: 32
+    channels: 3
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: true
+    rescaled: true
+    num_workers: 4
+
+model:
+    type: "umae"
+    in_channels: 3
+    patch_size: 2
+    temb_dim: 512
+    encoder:
+        embed_dim: 512
+        depth: 12
+        num_heads: 8
+    decoder:
+        embed_dim: 384
+        depth: 8
+        num_heads: 6
+
+    use_add_skip: false
+    skip_idxs: [[1, 6], [4, 4], [7, 2], [10, 1]]
+    use_final_conv: true
+
+    dropout: 0.2
+    mlp_ratio: 4
+
+    var_type: fixedlarge
+    ema_rate: 0.9999
+    ema: True
+
+diffusion:
+    beta_schedule: linear
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_diffusion_timesteps: 1000
+
+training:
+    batch_size: 128
+    n_epochs: 10000
+    n_iters: 5000000
+    snapshot_freq: 5000
+    validation_freq: 2000
+
+sampling:
+    batch_size: 36
+    last_only: True
+
+optim:
+    weight_decay: 0.000
+    optimizer: "Adam"
+    lr: 0.0002
+    beta1: 0.9
+    amsgrad: false
+    eps: 0.00000001
+    grad_clip: 1.0
