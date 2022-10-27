@@ -16,7 +16,7 @@ model:
     embed_dim: 512
     temb_dim: 512
     depth: 13
-    num_heads: 6
+    num_heads: 8
 
     use_add_skip: false
     skip_rate: 2
