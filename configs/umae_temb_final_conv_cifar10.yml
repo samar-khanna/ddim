@@ -15,16 +15,16 @@ model:
     patch_size: 2
     temb_dim: 512
     encoder:
-        embed_dim: 512
+        embed_dim: 384
         depth: 12
-        num_heads: 8
+        num_heads: 6
     decoder:
         embed_dim: 384
-        depth: 8
+        depth: 12
         num_heads: 6
 
     use_add_skip: false
-    skip_idxs: [[1, 6], [4, 4], [7, 2], [10, 1]]
+    skip_idxs: [[1, 10], [4, 7], [7, 4], [10, 1]]
     use_final_conv: true
 
     dropout: 0.2
