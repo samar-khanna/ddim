@@ -96,7 +96,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         x = self.pos_drop(x)
         x = x + time
         for blk in self.blocks:
-            x = blk(x)
+            x = x + blk(x)
 
         if self.global_pool:
             x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
