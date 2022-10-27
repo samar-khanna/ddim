@@ -19,6 +19,7 @@ class UVisionTransformer(vit.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
     def __init__(self, temb_dim=0, skip_rate=1, use_add_skip=False, use_final_conv=True, **kwargs):
+        kwargs['qkv_bias'] = True
         super().__init__(**kwargs)
 
         self.patch_size = kwargs['patch_size']
@@ -65,11 +66,40 @@ class UVisionTransformer(vit.VisionTransformer):
         self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same') \
             if use_final_conv else nn.Identity()
 
+        self.initialize_weights()
+
         # self.global_pool = global_pool
         # if self.global_pool:
         #     norm_layer = kwargs['norm_layer']
         #     embed_dim = kwargs['embed_dim']
         #     self.fc_norm = norm_layer(embed_dim)
+
+    def initialize_weights(self):
+        # initialization
+        # initialize (and freeze) pos_embed by sin-cos embedding
+        pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        self.pos_embed.requires_grad = False
+
+        # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
+        w = self.patch_embed.proj.weight.data
+        torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
+
+        # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
+        torch.nn.init.normal_(self.cls_token, std=.02)
+
+        # initialize nn.Linear and nn.LayerNorm
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            # we use xavier_uniform following official JAX ViT:
+            torch.nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
     def patchify(self, imgs, p, c):
         """
@@ -107,7 +137,7 @@ class UVisionTransformer(vit.VisionTransformer):
 
     def forward(self, x, time):
         B = x.shape[0]
-        x = self.patch_embed(x)
+        x = self.patch_embed(x)  # (N, L, D)
 
         cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
