@@ -13,7 +13,7 @@ model:
     type: "uvit"
     in_channels: 3
     patch_size: 2
-    embed_dim: 384
+    embed_dim: 512
     temb_dim: 512
     depth: 13
     num_heads: 6
