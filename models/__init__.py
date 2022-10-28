@@ -105,6 +105,8 @@ def get_model(config):
         num_attn_heads = config.model.num_heads
 
         use_final_conv = config.model.use_final_conv
+        is_finetune = config.model.finetune
+        nb_classes = getattr(config.model, 'nb_classes', 0)
 
         temb_dim = config.model.temb_dim
         mlp_ratio = config.model.mlp_ratio
@@ -114,7 +116,7 @@ def get_model(config):
             img_size=img_size,
             patch_size=patch_size,
             in_chans=in_channels,
-            num_classes=0,
+            num_classes=nb_classes,
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_attn_heads,
@@ -122,6 +124,7 @@ def get_model(config):
             drop_rate=dropout,
             temb_dim=temb_dim,
             use_final_conv=use_final_conv,
+            finetune=is_finetune,
         )
     elif config.model.type == 'uvit':
         img_size = config.data.image_size

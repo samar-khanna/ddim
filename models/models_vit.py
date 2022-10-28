@@ -23,7 +23,7 @@ from models.time_embed import get_timestep_embedding, ZerosLike
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self,  temb_dim=0, use_final_conv=True, **kwargs):
+    def __init__(self,  temb_dim=0, use_final_conv=True, finetune=False, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
 
         self.patch_size = kwargs['patch_size']
@@ -57,6 +57,15 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
         self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same') \
             if use_final_conv else nn.Identity()
+
+        if finetune:
+            norm_layer = kwargs['norm_layer']
+            embed_dim = kwargs['embed_dim']
+            self.fc_norm = norm_layer(embed_dim)
+
+            del self.norm  # remove the original norm
+            del self.decoder_pred
+            del self.final_conv
 
     def patchify(self, imgs, p, c):
         """
@@ -123,6 +132,32 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         x = self.final_conv(x)  # (N, C, H, W)
 
         return x
+
+    def forward_finetune(self, x, time):
+        B = x.shape[0]
+        x = self.patch_embed(x)
+
+        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
+        x = x + self.pos_embed
+        x = self.pos_drop(x)
+
+        # embed time
+        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
+        time = time.unsqueeze(1)  # (N, 1, D)
+        temb = self.temb(time)  # (N, 1, D_t)
+
+        for i, blk in enumerate(self.blocks):
+            x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
+
+        x = self.norm(x)
+
+        x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
+
+        x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
+        outcome = self.fc_norm(x)
+
+        return outcome
 
 
 def vit_base_patch16(**kwargs):
