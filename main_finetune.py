@@ -61,13 +61,13 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model_type', default=None, choices=['vit'],
                         help='Use channel model')
-    parser.add_argument('--model', default='vit_large_patch16', type=str, metavar='MODEL',
+    parser.add_argument('--model_arch', default='vit_large_patch16', type=str, metavar='MODEL',
                         help='Name of model to train')
 
-    parser.add_argument('--input_size', default=224, type=int,
-                        help='images input size')
-    parser.add_argument('--patch_size', default=16, type=int,
-                        help='images input size')
+    # parser.add_argument('--input_size', default=224, type=int,
+    #                     help='images input size')
+    # parser.add_argument('--patch_size', default=16, type=int,
+    #                     help='images input size')
 
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
@@ -88,7 +88,7 @@ def get_args_parser():
     parser.add_argument('--min_lr', type=float, default=1e-6, metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
 
-    parser.add_argument('--warmup_epochs', type=int, default=5, metavar='N',
+    parser.add_argument('--warmup_epochs', type=int, default=2, metavar='N',
                         help='epochs to warmup LR')
 
     # Augmentation parameters
