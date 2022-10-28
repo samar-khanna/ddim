@@ -124,32 +124,6 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
         return x
 
-    def forward_finetune(self, x, time):
-        B = x.shape[0]
-        x = self.patch_embed(x)
-
-        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
-        x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
-        x = x + self.pos_embed
-        x = self.pos_drop(x)
-
-        # embed time
-        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
-        time = time.unsqueeze(1)  # (N, 1, D)
-        temb = self.temb(time)  # (N, 1, D_t)
-
-        for i, blk in enumerate(self.blocks):
-            x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
-
-        x = self.norm(x)
-
-        x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
-
-        x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
-        outcome = self.fc_norm(x)
-
-        return outcome
-
 
 class ViTFinetune(VisionTransformer):
     def __init__(self, num_timesteps=1000, *args, **kwargs):
@@ -186,8 +160,6 @@ class ViTFinetune(VisionTransformer):
             x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
 
         x = self.norm(x)
-
-        x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
 
         x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
         outcome = self.fc_norm(x)
