@@ -162,8 +162,9 @@ class ViTFinetune(VisionTransformer):
         x = self.norm(x)
 
         x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
-        outcome = self.fc_norm(x)
+        x = self.fc_norm(x)  # (N, D)
 
+        outcome = self.head(x)  # (N, #classes)
         return outcome
 
 
