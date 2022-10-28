@@ -143,7 +143,6 @@ def get_model(config):
             img_size=img_size,
             patch_size=patch_size,
             in_chans=in_channels,
-            num_classes=0,
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_attn_heads,

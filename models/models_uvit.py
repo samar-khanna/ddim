@@ -9,24 +9,24 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-import timm.models.vision_transformer as vit
+from timm.models.vision_transformer import PatchEmbed, Block, Mlp
 
 from models.pos_embed import get_2d_sincos_pos_embed
 from models.time_embed import get_timestep_embedding, ZerosLike
 
 
-class UVisionTransformer(vit.VisionTransformer):
+class UVisionTransformer(nn.Module):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, temb_dim=0, skip_rate=1, use_add_skip=False, use_final_conv=True, **kwargs):
-        kwargs['qkv_bias'] = True
-        super().__init__(**kwargs)
+    def __init__(self,
+                 img_size=224, patch_size=16, in_chans=3, embed_dim=768, depth=12,
+                 num_heads=12, mlp_ratio=4., qkv_bias=True, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
+                 norm_layer=nn.LayerNorm,
+                 temb_dim=0, skip_rate=1, use_add_skip=False, use_final_conv=True,):
+        super().__init__()
 
-        self.patch_size = kwargs['patch_size']
-        self.in_c = kwargs['in_chans']
-        embed_dim = kwargs['embed_dim']
-        depth = kwargs['depth']
-        dropout = kwargs['drop_rate']
+        self.patch_size = patch_size
+        self.in_c = in_chans
 
         # Temporal embedding stuff for diffusion
         self.temb = nn.Identity()
@@ -42,9 +42,19 @@ class UVisionTransformer(vit.VisionTransformer):
                 for _ in range(depth)])
 
         # Added by Samar, need default pos embedding
-        pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches ** .5),
-                                            cls_token=True)
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        num_patches = self.patch_embed.num_patches
+
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), requires_grad=False)  # fixed sin-cos embedding
+
+        self.blocks = nn.ModuleList([
+            Block(
+                dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio,
+                qkv_bias=qkv_bias, qk_scale=qk_scale,
+                drop=drop_rate, attn_drop=attn_drop_rate, norm_layer=norm_layer)
+            for i in range(depth)])
+        self.norm = norm_layer(embed_dim)
 
         # Add a projection for each skip connection
         self.use_add_skip = use_add_skip
@@ -56,7 +66,7 @@ class UVisionTransformer(vit.VisionTransformer):
                 # If num blocks between blocks is too small, then don't add skip
                 if depth - 2*(i + 1) > skip_rate:
                     self.skip_idxs[i] = depth-(i+1)  # i is out connection, depth-(i+1) is in connection
-                    skip_projs[depth-(i+1)] = vit.Mlp(in_features=2*embed_dim, out_features=embed_dim, drop=dropout) \
+                    skip_projs[depth-(i+1)] = Mlp(in_features=2*embed_dim, out_features=embed_dim, drop=drop_rate) \
                         if not use_add_skip else nn.Identity()
         self.skip_projs = nn.ModuleDict({str(i): module for i, module in skip_projs.items()})
         print(f"Using skip connections: {self.skip_idxs}")
