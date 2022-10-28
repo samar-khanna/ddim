@@ -130,6 +130,9 @@ class ViTFinetune(VisionTransformer):
         super().__init__(*args, **kwargs)
         self.num_timesteps = num_timesteps
         self.use_temb = use_temb
+        if not self.use_temb:
+            del self.temb
+            del self.temb_blocks
 
         norm_layer = nn.LayerNorm
         embed_dim = kwargs['embed_dim']
