@@ -152,7 +152,6 @@ class UVisionTransformer(nn.Module):
         cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
         x = x + self.pos_embed
-        x = self.pos_drop(x)
 
         """
         b1 -> x -> b2 -> x -> b3 -> x -> b4 -> x -> b5
