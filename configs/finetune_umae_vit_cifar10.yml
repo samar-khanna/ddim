@@ -24,6 +24,7 @@ model:
 
     nb_classes: 10
     finetune: true
+    use_temb: true
 
     dropout: 0.2
     mlp_ratio: 4

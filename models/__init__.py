@@ -113,6 +113,7 @@ def get_model(config):
         dropout = config.model.dropout
 
         if is_finetune:
+            use_temb = config.model.use_temb
             return ViTFinetune(
                 img_size=img_size,
                 patch_size=patch_size,
@@ -124,6 +125,7 @@ def get_model(config):
                 mlp_ratio=mlp_ratio,
                 drop_rate=dropout,
                 temb_dim=temb_dim,
+                use_temb=use_temb,
             )
 
         return VisionTransformer(

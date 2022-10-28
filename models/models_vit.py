@@ -159,11 +159,10 @@ class ViTFinetune(VisionTransformer):
             temb = self.temb(time)  # (N, 1, D_t)
 
         for i, blk in enumerate(self.blocks):
-            # if self.use_temb:
-            #     x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
-            # else:
-            #     x = blk(x)
-            x = blk(x)
+            if self.use_temb:
+                x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
+            else:
+                x = blk(x)
 
         x = self.norm(x)
 
