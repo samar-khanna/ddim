@@ -276,6 +276,7 @@ def main(args):
 
         print("Load pre-trained checkpoint from: %s" % args.finetune)
         checkpoint_model = checkpoint[0]  # TODO: revisit to load model
+        checkpoint_model = {k[7:]: p for k, p in checkpoint_model.items()}  # remove the 'module.'
         state_dict = model.state_dict()
 
         # if 'patch_embed.proj.weight' in checkpoint_model and 'patch_embed.proj.weight' in state_dict:

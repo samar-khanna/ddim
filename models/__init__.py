@@ -1,5 +1,5 @@
 from models.models_unet import UNet
-from models.models_vit import VisionTransformer
+from models.models_vit import VisionTransformer, ViTFinetune
 from models.models_uvit import UVisionTransformer
 from models.models_mae import MaskedAutoencoderViT
 from models.models_umae import UMaskedAutoencoderViT
@@ -112,11 +112,25 @@ def get_model(config):
         mlp_ratio = config.model.mlp_ratio
         dropout = config.model.dropout
 
+        if is_finetune:
+            return ViTFinetune(
+                img_size=img_size,
+                patch_size=patch_size,
+                in_chans=in_channels,
+                num_classes=nb_classes,
+                embed_dim=embed_dim,
+                depth=depth,
+                num_heads=num_attn_heads,
+                mlp_ratio=mlp_ratio,
+                drop_rate=dropout,
+                temb_dim=temb_dim,
+            )
+
         return VisionTransformer(
             img_size=img_size,
             patch_size=patch_size,
             in_chans=in_channels,
-            num_classes=nb_classes,
+            num_classes=0,
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_attn_heads,
@@ -124,7 +138,6 @@ def get_model(config):
             drop_rate=dropout,
             temb_dim=temb_dim,
             use_final_conv=use_final_conv,
-            finetune=is_finetune,
         )
     elif config.model.type == 'uvit':
         img_size = config.data.image_size
