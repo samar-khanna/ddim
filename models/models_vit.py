@@ -59,7 +59,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             if use_final_conv else nn.Identity()
 
         if finetune:
-            norm_layer = kwargs['norm_layer']
+            norm_layer = nn.LayerNorm
             embed_dim = kwargs['embed_dim']
             self.fc_norm = norm_layer(embed_dim)
 
