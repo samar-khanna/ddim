@@ -126,9 +126,10 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
 
 class ViTFinetune(VisionTransformer):
-    def __init__(self, num_timesteps=1000, *args, **kwargs):
+    def __init__(self, use_temb=False, num_timesteps=1000, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_timesteps = num_timesteps
+        self.use_temb = use_temb
 
         norm_layer = nn.LayerNorm
         embed_dim = kwargs['embed_dim']
@@ -138,11 +139,6 @@ class ViTFinetune(VisionTransformer):
         del self.final_conv
 
     def forward(self, x):
-        b = x.shape[0]
-        t = torch.zeros(b//2 + 1, device=x.device)
-
-        t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:b]
-
         B = x.shape[0]
         x = self.patch_embed(x)
 
@@ -152,12 +148,19 @@ class ViTFinetune(VisionTransformer):
         x = self.pos_drop(x)
 
         # embed time
-        time = get_timestep_embedding(t, x.shape[-1])  # (N, D)
-        time = time.unsqueeze(1)  # (N, 1, D)
-        temb = self.temb(time)  # (N, 1, D_t)
+        if self.use_temb:
+            t = torch.zeros(B//2 + 1, device=x.device)
+            t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:B]
+            time = get_timestep_embedding(t, x.shape[-1])  # (N, D)
+            time = time.unsqueeze(1)  # (N, 1, D)
+            temb = self.temb(time)  # (N, 1, D_t)
 
         for i, blk in enumerate(self.blocks):
-            x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
+            # if self.use_temb:
+            #     x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
+            # else:
+            #     x = blk(x)
+            x = blk(x)
 
         x = self.norm(x)
 
