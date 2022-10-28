@@ -55,7 +55,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             samples, targets = mixup_fn(samples, targets)
 
         with torch.cuda.amp.autocast():
-            outputs = model(samples)
+            outputs = model.forward_finetune(samples)
             loss = criterion(outputs, targets)
 
         loss_value = loss.item()
@@ -124,7 +124,7 @@ def evaluate(data_loader, model, device):
         # print("before pass model")
         # compute output
         with torch.cuda.amp.autocast():
-            output = model(images)
+            output = model.forward_finetune(images)
             loss = criterion(output, target)
 
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
