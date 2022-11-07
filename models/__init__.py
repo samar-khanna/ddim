@@ -59,9 +59,9 @@ def get_model(config):
         in_chans = config.model.in_channels
         # num_classes = 1000,
         # global_pool = 'token',
-        embed_dim = config.model.encoder.embed_dim
-        depth = config.model.encoder.depth
-        num_heads = config.model.encoder.num_heads
+        embed_dim = config.model.embed_dim
+        depth = config.model.depth
+        num_heads = config.model.num_heads
         mlp_ratio = config.model.mlp_ratio
         # qkv_bias = True,
         # init_values = None,
