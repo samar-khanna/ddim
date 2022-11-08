@@ -41,7 +41,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
 
-    def __init__(self, global_pool=False,use_generative=False, **kwargs):
+    def __init__(self, global_pool=False,use_generative=False,use_temb=True,num_timesteps=1000, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
 
         # Added by Samar, need default pos embedding
@@ -66,7 +66,8 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         # to restore the image from embed dim to patch size dim
         self.img_restore = nn.Linear(embed_dim, patch_size ** 2 * in_chans, bias=True)  # decoder to patch
         self.use_generative=use_generative
-
+        self.use_temb=use_temb
+        self.num_timesteps=num_timesteps
     def unpatchify(self, x, p, c):
         """
         x: (N, L, patch_size**2 *C)
@@ -84,10 +85,13 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def forward(self, x, time):
+    def forward(self, x, time=None):
 
         B = x.shape[0]
         x = self.patch_embed(x)
+        if time==None and not self.use_generative and self.use_temb:
+            time= torch.zeros(B//2 + 1, device=x.device)
+            time = torch.cat([time, self.num_timesteps - time - 1], dim=0)[:B]
         time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
         time = time.unsqueeze(1)  # (N, 1, D)
 
