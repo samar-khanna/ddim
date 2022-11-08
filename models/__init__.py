@@ -57,7 +57,7 @@ def get_model(config):
         img_size = config.data.image_size
         patch_size = config.model.patch_size
         in_chans = config.model.in_channels
-        # num_classes = 1000,
+        num_classes = config.model.num_classes,
         # global_pool = 'token',
         embed_dim = config.model.embed_dim
         depth = config.model.depth
@@ -85,6 +85,7 @@ def get_model(config):
             depth=depth,
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
+            num_classes=num_classes,
         )
     elif config.model.type == "vit_segm":
         # img_size = config.data.image_size

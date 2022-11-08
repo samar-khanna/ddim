@@ -41,7 +41,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
 
-    def __init__(self, global_pool=False, **kwargs):
+    def __init__(self, global_pool=False,use_generative=False, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
 
         # Added by Samar, need default pos embedding
@@ -65,6 +65,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
 
         # to restore the image from embed dim to patch size dim
         self.img_restore = nn.Linear(embed_dim, patch_size ** 2 * in_chans, bias=True)  # decoder to patch
+        self.use_generative=use_generative
 
     def unpatchify(self, x, p, c):
         """
@@ -103,18 +104,21 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             outcome = self.fc_norm(x)
         else:
             x = self.norm(x)
-            outcome = x[:, 0]
+            outcome = x[:, 0] # B,D
+        if self.use_generative:
         # remove cls token
-        x = x[:, 1:, :]
+            x = x[:, 1:, :]
 
-        x = self.img_restore(x)  # N, L, P*P*C
-        print(x.shape)
-        # unpatchify
+            x = self.img_restore(x)  # N, L, P*P*C
+            print(x.shape)
+            # unpatchify
 
-        x = self.unpatchify(x, self.patch_size, self.in_chans)  # (N, C, H, W)
-        print(x.shape)
+            x = self.unpatchify(x, self.patch_size, self.in_chans)  # (N, C, H, W)
+            print(x.shape)
 
-        return x
+            return x
+        else:
+            return self.head(outcome)
 
 def vit_base_patch16(**kwargs):
     model = VisionTransformer(
