@@ -164,14 +164,9 @@ class UMaskedAutoencoderViT(nn.Module):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def forward_encoder(self, x, mask_ratio, time):
+    def forward_encoder(self, x, mask_ratio, temb):
         # embed patches
         x = self.patch_embed(x)  # (N, L, D)
-
-        # embed time
-        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
-        time = time.unsqueeze(1)  # (N, 1, D)
-        temb = self.temb(time)  # (N, 1, D_t)
 
         # add pos embed w/o cls token
         x = x + self.pos_embed[:, 1:, :]  # (N, L, D)
@@ -197,12 +192,7 @@ class UMaskedAutoencoderViT(nn.Module):
         # return x, mask, ids_restore
         return x, prev_xs
 
-    def forward_decoder(self, x, prev_xs, time):
-        # embed time in encoder dim
-        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
-        time = time.unsqueeze(1)  # (N, 1, D)
-        temb = self.temb(time)  # (N, 1, D_t)
-
+    def forward_decoder(self, x, prev_xs, temb):
         # embed tokens
         x = self.decoder_embed(x)  # (N, L, D')
 
@@ -240,8 +230,14 @@ class UMaskedAutoencoderViT(nn.Module):
         return x
 
     def forward(self, imgs, time, mask_ratio=0.):
-        latent, prev_xs = self.forward_encoder(imgs, mask_ratio, time)
-        pred = self.forward_decoder(latent, prev_xs, time)  # [N, L, p*p*3]
+        # embed time
+        enc_dim = self.patch_embed.proj.out_channels
+        time = get_timestep_embedding(time, enc_dim)  # (N, D)
+        time = time.unsqueeze(1)  # (N, 1, D)
+        temb = self.temb(time)  # (N, 1, D_t)
+
+        latent, prev_xs = self.forward_encoder(imgs, mask_ratio, temb)
+        pred = self.forward_decoder(latent, prev_xs, temb)  # [N, L, p*p*3]
         pred_img = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)  # (N, C, H, W)
         pred_img = self.final_conv(pred_img)  # (N, C, H, W)
         return pred_img
