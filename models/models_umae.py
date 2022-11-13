@@ -63,18 +63,13 @@ class UMaskedAutoencoderViT(nn.Module):
         self.decoder_temb = nn.Identity()
         self.decoder_temb_blocks = nn.ModuleList([nn.Identity()] + [ZerosLike() for _ in range(1, decoder_depth)])
         if temb_dim > 0:
-            self.decoder_temb = nn.Sequential(
-                nn.Linear(decoder_embed_dim, temb_dim),
-                nn.SiLU(),
-                nn.Linear(temb_dim, temb_dim),
-            )
             self.decoder_temb_blocks = nn.ModuleList([
                 nn.Sequential(nn.SiLU(), nn.Linear(temb_dim, decoder_embed_dim))
                 for _ in range(decoder_depth)])
 
         self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
 
-        self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
+        # self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim), requires_grad=False)  # fixed sin-cos embedding
 
@@ -120,7 +115,7 @@ class UMaskedAutoencoderViT(nn.Module):
 
         # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
         torch.nn.init.normal_(self.cls_token, std=.02)
-        torch.nn.init.normal_(self.mask_token, std=.02)
+        # torch.nn.init.normal_(self.mask_token, std=.02)
 
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
@@ -203,13 +198,13 @@ class UMaskedAutoencoderViT(nn.Module):
         return x, prev_xs
 
     def forward_decoder(self, x, prev_xs, time):
+        # embed time in encoder dim
+        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
+        time = time.unsqueeze(1)  # (N, 1, D)
+        temb = self.temb(time)  # (N, 1, D_t)
+
         # embed tokens
         x = self.decoder_embed(x)  # (N, L, D')
-
-        # embed time
-        time = get_timestep_embedding(time, x.shape[-1])  # (N, D')
-        time = time.unsqueeze(1)  # (N, 1, D')
-        temb = self.decoder_temb(time)  # (N, 1, D_t)
 
         # # append mask tokens to sequence
         # mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
