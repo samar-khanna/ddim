@@ -27,7 +27,7 @@ model:
     skip_idxs: [[1, 10], [3, 8], [5, 6], [7, 4], [9, 2]]
     use_final_conv: true
 
-    dropout: 0.2
+    dropout: 0.1
     mlp_ratio: 4
 
     var_type: fixedlarge
