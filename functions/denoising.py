@@ -32,6 +32,31 @@ def generalized_steps(x, seq, model, b, **kwargs):
     return xs, x0_preds
 
 
+def generarlized_image_steps(x, seq, model, b, **kwargs):
+    with torch.no_grad():
+        n = x.size(0)
+        seq_next = [-1] + list(seq[:-1])
+        x0_preds = []
+        xs = [x]
+        for i, j in zip(reversed(seq), reversed(seq_next)):
+            t = (torch.ones(n) * i).to(x.device)
+            next_t = (torch.ones(n) * j).to(x.device)
+            at = compute_alpha(b, t.long())
+            at_next = compute_alpha(b, next_t.long())
+            xt = xs[-1].to('cuda')
+            x0_t = model(xt, t)
+            et = (xt - at.sqrt() * x0_t)/(1 - at).sqrt()
+            x0_preds.append(x0_t.to('cpu'))
+            c1 = (
+                kwargs.get("eta", 0) * ((1 - at / at_next) * (1 - at_next) / (1 - at)).sqrt()
+            )
+            c2 = ((1 - at_next) - c1 ** 2).sqrt()
+            xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x) + c2 * et
+            xs.append(xt_next.to('cpu'))
+
+    return xs, x0_preds
+
+
 def ddpm_steps(x, seq, model, b, **kwargs):
     with torch.no_grad():
         n = x.size(0)

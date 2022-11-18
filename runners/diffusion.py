@@ -353,7 +353,7 @@ class Diffusion(object):
         except Exception:
             skip = 1
 
-        if self.args.sample_type == "generalized":
+        if self.args.sample_type.startswith("generalized"):
             if self.args.skip_type == "uniform":
                 skip = self.num_timesteps // self.args.timesteps
                 seq = range(0, self.num_timesteps, skip)
@@ -367,9 +367,12 @@ class Diffusion(object):
                 seq = [int(s) for s in list(seq)]
             else:
                 raise NotImplementedError
-            from functions.denoising import generalized_steps
+            from functions.denoising import generalized_steps, generarlized_image_steps
 
-            xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta)
+            if self.args.sample_type == "generalized_image":
+                xs = generarlized_image_steps(x, seq, model, self.betas, eta=self.args.eta)
+            else:
+                xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta)
             x = xs
         elif self.args.sample_type == "ddpm_noisy":
             if self.args.skip_type == "uniform":
