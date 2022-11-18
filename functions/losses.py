@@ -26,10 +26,12 @@ def snr_image_loss(
     x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
     output = model(x, t.float())
 
+    a = a.view(-1)
+    batch_loss = (a/(1.0-a)).clamp(min=1.0) * (x0 - output).pow(2).sum(dim=(1, 2, 3))  # (N,)
     if keepdim:
-        return (a/(1.0-a)).clamp(min=1.0) * (x0 - output).pow(2).sum(dim=(1, 2, 3))
+        return batch_loss
     else:
-        return (a/(1.0-a)).clamp(min=1.0) * (x0 - output).pow(2).sum(dim=(1, 2, 3)).mean(dim=0)
+        return batch_loss.mean(dim=0)
 
 
 loss_registry = {
