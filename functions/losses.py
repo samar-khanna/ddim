@@ -37,9 +37,11 @@ def snr_image_loss(
 loss_registry = {
     'simple': noise_estimation_loss,
     'unet': noise_estimation_loss,
+    'unet_x': snr_image_loss,
     'vit': noise_estimation_loss,
     'vit_mae': noise_estimation_loss,
     'vit_mae_temb': noise_estimation_loss,
-    'umae': snr_image_loss,
+    'umae': noise_estimation_loss,
+    'umae_x': snr_image_loss,
     'uvit': noise_estimation_loss,
 }

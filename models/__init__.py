@@ -6,7 +6,7 @@ from models.models_umae import UMaskedAutoencoderViT
 
 
 def get_model(config):
-    if config.model.type == "unet" or config.model.type == "simple":
+    if config.model.type in ['unet', 'simple', 'unet_x']:
         ch, out_ch, ch_mult = config.model.ch, config.model.out_ch, tuple(config.model.ch_mult)
         num_res_blocks = config.model.num_res_blocks
         attn_resolutions = config.model.attn_resolutions
@@ -58,7 +58,7 @@ def get_model(config):
             mlp_ratio=mlp_ratio,
             dropout=dropout,
         )
-    elif config.model.type == 'umae':
+    elif config.model.type in ['umae', 'umae_x']:
         img_size = config.data.image_size
         patch_size = config.model.patch_size
         in_channels = config.model.in_channels
