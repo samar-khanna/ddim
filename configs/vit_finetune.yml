@@ -11,13 +11,12 @@ data:
 
 model:
     type: "vit"
-    num_classes: 10
-    use_generative : True
     in_channels: 3
     patch_size: 4
 
-    embed_dim: 768
+    embed_dim: 384
     depth: 24
+    num_classes: 10
     num_heads: 12
 #    decoder:
 #        embed_dim: 384
@@ -27,7 +26,8 @@ model:
 
     var_type: fixedlarge
     ema_rate: 0.9999
-    ema: False
+    ema: True
+
 
 diffusion:
     beta_schedule: linear
