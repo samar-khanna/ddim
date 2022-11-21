@@ -123,6 +123,52 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             return x
         else:
             return self.head(outcome)
+class ViTFinetune(VisionTransformer):
+    def __init__(self, use_temb=False, num_timesteps=1000, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_timesteps = num_timesteps
+        self.use_temb = use_temb
+        if not self.use_temb:
+            del self.temb
+            del self.temb_blocks
+
+        norm_layer = nn.LayerNorm
+        embed_dim = kwargs['embed_dim']
+        self.fc_norm = norm_layer(embed_dim)
+
+        del self.decoder_pred
+        del self.final_conv
+
+    def forward(self, x):
+        B = x.shape[0]
+        x = self.patch_embed(x)
+
+        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
+        x = x + self.pos_embed
+        x = self.pos_drop(x)
+
+        # embed time
+        if self.use_temb:
+            t = torch.zeros(B//2 + 1, device=x.device)
+            t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:B]
+            time = get_timestep_embedding(t, x.shape[-1])  # (N, D)
+            time = time.unsqueeze(1)  # (N, 1, D)
+            temb = self.temb(time)  # (N, 1, D_t)
+
+        for i, blk in enumerate(self.blocks):
+            if self.use_temb:
+                x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
+            else:
+                x = blk(x)
+
+        x = self.norm(x)
+
+        x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
+        x = self.fc_norm(x)  # (N, D)
+
+        outcome = self.head(x)  # (N, #classes)
+        return outcome
 
 def vit_base_patch16(**kwargs):
     model = VisionTransformer(
