@@ -21,5 +21,6 @@ loss_registry = {
     'vit_mae': noise_estimation_loss,
     'vit':noise_estimation_loss,
     'vit_segm': noise_estimation_loss,
+    'umae': noise_estimation_loss,
 
 }
