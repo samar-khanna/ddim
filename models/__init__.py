@@ -104,6 +104,7 @@ def get_model(config):
         embed_dim = config.model.embed_dim
         depth = config.model.depth
         num_heads = config.model.num_heads
+        use_generative=config.model.use_generative
         mlp_ratio = config.model.mlp_ratio
         is_finetune = config.model.finetune
         temb_dim = config.model.temb_dim
@@ -149,6 +150,7 @@ def get_model(config):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
             num_classes=num_classes,
+            use_generative=use_generative
         )
     elif config.model.type == "vit_segm":
         # img_size = config.data.image_size
