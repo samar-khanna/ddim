@@ -16,6 +16,7 @@ import torch.nn as nn
 import math
 import timm.models.vision_transformer
 from models.pos_embed import get_2d_sincos_pos_embed
+from models.time_embed import get_timestep_embedding, ZerosLike
 
 def get_timestep_embedding(timesteps, embedding_dim):
     """
