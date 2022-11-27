@@ -53,14 +53,14 @@ def get_args_parser():
     #     "--comment", type=str, default="", help="A string for experiment comment"
     # )
 
-    parser.add_argument('--batch_size', default=64, type=int,
+    parser.add_argument('--batch_size', default=32, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
     # Model parameters
-    parser.add_argument('--model_type', default=None, choices=['vit'],
+    parser.add_argument('--model_type', default=None, choices=['vit','umae'],
                         help='Use channel model')
     parser.add_argument('--model_arch', default='vit_large_patch16', type=str, metavar='MODEL',
                         help='Name of model to train')
@@ -113,7 +113,7 @@ def get_args_parser():
     # * Mixup params
     parser.add_argument('--mixup', type=float, default=0,
                         help='mixup alpha, mixup enabled if > 0.')
-    parser.add_argument('--cutmix', type=float, default=0,
+    parser.add_argument('--cutmix', type=float, default=1,
                         help='cutmix alpha, cutmix enabled if > 0.')
     parser.add_argument('--cutmix_minmax', type=float, nargs='+', default=None,
                         help='cutmix min/max ratio, overrides alpha and enables cutmix if set (default: None)')
@@ -172,7 +172,7 @@ def get_args_parser():
     parser.set_defaults(pin_mem=True)
 
     # distributed training parameters
-    parser.add_argument('--world_size', default=1, type=int,
+    parser.add_argument('--world_size', default=8, type=int,
                         help='number of distributed processes')
     parser.add_argument('--local_rank', default=os.getenv('LOCAL_RANK', 0), type=int)
     parser.add_argument('--dist_on_itp', action='store_true')

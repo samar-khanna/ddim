@@ -5,7 +5,7 @@ from models.segm.model.factory import create_segmenter
 
 from models.models_umae import UMaskedAutoencoderViT
 
-from ddim.models.models_vit import ViTFinetune
+from models.models_vit import ViTFinetune
 
 
 def get_model(config):
