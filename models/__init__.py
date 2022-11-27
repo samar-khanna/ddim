@@ -1,7 +1,7 @@
 from models.models_unet import UNet
 from models.models_mae import MaskedAutoencoderViT
 from models.models_vit import VisionTransformer
-from models.segm.model.factory import create_segmenter
+# from models.segm.model.factory import create_segmenter
 
 from models.models_umae import UMaskedAutoencoderViT
 
@@ -152,44 +152,44 @@ def get_model(config):
             num_classes=num_classes,
             use_generative=use_generative
         )
-    elif config.model.type == "vit_segm":
-        # img_size = config.data.image_size
-        # patch_size = config.model.patch_size
-        # in_channels = config.model.in_channels
-        #
-        # embed_dim = config.model.encoder.embed_dim
-        # depth = config.model.encoder.depth
-        # num_attn_heads = config.model.encoder.num_heads
-        #
-        # decoder_embed_dim = config.model.decoder.embed_dim
-        # decoder_depth = config.model.decoder.depth
-        # decoder_num_heads = config.model.decoder.num_heads
-
-        # mlp_ratio = config.model.mlp_ratio
-        model_cfg = dict()
-        decoder = dict()
-        decoder['name'] = config.model.decoder.name
-        decoder['dropout'] =config.model.decoder.mask_transformer.dropout
-        decoder['drop_path_rate'] =config.model.decoder.mask_transformer.drop_path_rate
-        decoder['n_layers'] =config.model.decoder.mask_transformer.n_layers
-        # decoder['d_encoder']=
-        # decoder['patch_size']=
-        model_cfg["n_cls"]=config.model.n_cls
-        model_cfg["image_size"] = (config.data.image_size, config.data.image_size)
-        model_cfg["patch_size"]=config.model.patch_size
-        model_cfg["d_model"]=config.model.d_model
-        model_cfg["n_heads"]=config.model.n_heads
-        model_cfg["n_layers"]=config.model.n_layers
-        
-        model_cfg["backbone"] = config.model.backbone
-        model_cfg["dropout"] = config.model.dropout
-        model_cfg["drop_path_rate"] = config.model.drop_path_rate
-        model_cfg["decoder"] = decoder
-        model_cfg["normalization"]=config.model.normalization
-
-        # model_cfg["normalization"]
-
-        model = create_segmenter(model_cfg)
-        return model
+    # elif config.model.type == "vit_segm":
+    #     # img_size = config.data.image_size
+    #     # patch_size = config.model.patch_size
+    #     # in_channels = config.model.in_channels
+    #     #
+    #     # embed_dim = config.model.encoder.embed_dim
+    #     # depth = config.model.encoder.depth
+    #     # num_attn_heads = config.model.encoder.num_heads
+    #     #
+    #     # decoder_embed_dim = config.model.decoder.embed_dim
+    #     # decoder_depth = config.model.decoder.depth
+    #     # decoder_num_heads = config.model.decoder.num_heads
+    #
+    #     # mlp_ratio = config.model.mlp_ratio
+    #     model_cfg = dict()
+    #     decoder = dict()
+    #     decoder['name'] = config.model.decoder.name
+    #     decoder['dropout'] =config.model.decoder.mask_transformer.dropout
+    #     decoder['drop_path_rate'] =config.model.decoder.mask_transformer.drop_path_rate
+    #     decoder['n_layers'] =config.model.decoder.mask_transformer.n_layers
+    #     # decoder['d_encoder']=
+    #     # decoder['patch_size']=
+    #     model_cfg["n_cls"]=config.model.n_cls
+    #     model_cfg["image_size"] = (config.data.image_size, config.data.image_size)
+    #     model_cfg["patch_size"]=config.model.patch_size
+    #     model_cfg["d_model"]=config.model.d_model
+    #     model_cfg["n_heads"]=config.model.n_heads
+    #     model_cfg["n_layers"]=config.model.n_layers
+    #
+    #     model_cfg["backbone"] = config.model.backbone
+    #     model_cfg["dropout"] = config.model.dropout
+    #     model_cfg["drop_path_rate"] = config.model.drop_path_rate
+    #     model_cfg["decoder"] = decoder
+    #     model_cfg["normalization"]=config.model.normalization
+    #
+    #     # model_cfg["normalization"]
+    #
+    #     model = create_segmenter(model_cfg)
+    #     return model
     else:
         raise NotImplementedError("Wrong model type")
