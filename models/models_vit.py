@@ -37,37 +37,148 @@ def get_timestep_embedding(timesteps, embedding_dim):
         emb = torch.nn.functional.pad(emb, (0, 1, 0, 0))
     return emb
 
+# class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
+#     """ Vision Transformer with support for global average pooling
+#     """
+#
+#     def __init__(self, global_pool=False,use_generative=False,use_temb=True,num_timesteps=1000, **kwargs):
+#         super(VisionTransformer, self).__init__(**kwargs)
+#
+#         # Added by Samar, need default pos embedding
+#         pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches ** .5),
+#                                             cls_token=True)
+#         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+#
+#         self.global_pool = global_pool
+#         embed_dim = kwargs['embed_dim']
+#         patch_size = kwargs['patch_size']
+#         in_chans = kwargs['in_chans']
+#         self.embed_dim = embed_dim
+#         self.patch_size = patch_size
+#         self.in_chans = in_chans
+#         if self.global_pool:
+#             norm_layer = kwargs['norm_layer']
+#             embed_dim = kwargs['embed_dim']
+#             self.fc_norm = norm_layer(embed_dim)
+#
+#             del self.norm  # remove the original norm
+#
+#         # to restore the image from embed dim to patch size dim
+#         self.img_restore = nn.Linear(embed_dim, patch_size ** 2 * in_chans, bias=True)  # decoder to patch
+#         self.use_generative=use_generative
+#         self.use_temb=use_temb
+#         self.num_timesteps=num_timesteps
+#     def unpatchify(self, x, p, c):
+#         """
+#         x: (N, L, patch_size**2 *C)
+#         p: Patch embed patch size
+#         c: Num channels
+#         imgs: (N, C, H, W)
+#         """
+#         # c = self.in_c
+#         # p = self.patch_embed.patch_size[0]
+#         h = w = int(x.shape[1] ** .5)
+#         assert h * w == x.shape[1]
+#
+#         x = x.reshape(shape=(x.shape[0], h, w, p, p, c))
+#         x = torch.einsum('nhwpqc->nchpwq', x)
+#         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
+#         return imgs
+#
+#     def forward(self, x, time=None):
+#
+#         B = x.shape[0]
+#         x = self.patch_embed(x)
+#         if time==None and not self.use_generative and self.use_temb:
+#             time= torch.zeros(B//2 + 1, device=x.device)
+#             time = torch.cat([time, self.num_timesteps - time - 1], dim=0)[:B]
+#         time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
+#         time = time.unsqueeze(1)  # (N, 1, D)
+#
+#         cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+#         x = torch.cat((cls_tokens, x), dim=1)
+#         x = x + self.pos_embed
+#         x = self.pos_drop(x)
+#         x = x + time
+#         for blk in self.blocks:
+#             x = x + blk(x)
+#
+#         if self.global_pool:
+#             x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
+#             outcome = self.fc_norm(x)
+#         else:
+#             x = self.norm(x)
+#             outcome = x[:, 0] # B,D
+#         if self.use_generative:
+#         # remove cls token
+#             x = x[:, 1:, :]
+#
+#             x = self.img_restore(x)  # N, L, P*P*C
+#             print(x.shape)
+#             # unpatchify
+#
+#             x = self.unpatchify(x, self.patch_size, self.in_chans)  # (N, C, H, W)
+#             print(x.shape)
+#
+#             return x
+#         else:
+#             return self.head(outcome)
+
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-
-    def __init__(self, global_pool=False,use_generative=False,use_temb=True,num_timesteps=1000, **kwargs):
+    def __init__(self,  temb_dim=0, use_final_conv=True, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
 
+        self.patch_size = kwargs['patch_size']
+        self.in_c = kwargs['in_chans']
+        embed_dim = kwargs['embed_dim']
+        depth = kwargs['depth']
+        dropout = kwargs['drop_rate']
+
         # Added by Samar, need default pos embedding
+        num_patches = self.patch_embed.num_patches
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim),
+                                      requires_grad=False)  # fixed sin-cos embedding
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches ** .5),
                                             cls_token=True)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-        self.global_pool = global_pool
-        embed_dim = kwargs['embed_dim']
-        patch_size = kwargs['patch_size']
-        in_chans = kwargs['in_chans']
-        self.embed_dim = embed_dim
-        self.patch_size = patch_size
-        self.in_chans = in_chans
-        if self.global_pool:
-            norm_layer = kwargs['norm_layer']
-            embed_dim = kwargs['embed_dim']
-            self.fc_norm = norm_layer(embed_dim)
+        # Temporal embedding stuff for diffusion
+        self.temb = nn.Identity()
+        self.temb_blocks = nn.ModuleList([nn.Identity()] + [ZerosLike() for _ in range(1, depth)])
+        if temb_dim > 0:
+            self.temb = nn.Sequential(
+                nn.Linear(embed_dim, temb_dim),
+                nn.SiLU(),
+                nn.Linear(temb_dim, temb_dim),
+            )
+            self.temb_blocks = nn.ModuleList([
+                nn.Sequential(nn.SiLU(), nn.Linear(temb_dim, embed_dim))
+                for _ in range(depth)])
 
-            del self.norm  # remove the original norm
+        self.decoder_pred = nn.Linear(embed_dim, self.patch_size ** 2 * self.in_c, bias=True)  # decoder to patch
 
-        # to restore the image from embed dim to patch size dim
-        self.img_restore = nn.Linear(embed_dim, patch_size ** 2 * in_chans, bias=True)  # decoder to patch
-        self.use_generative=use_generative
-        self.use_temb=use_temb
-        self.num_timesteps=num_timesteps
+        self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same') \
+            if use_final_conv else nn.Identity()
+
+    def patchify(self, imgs, p, c):
+        """
+        imgs: (N, C, H, W)
+        p: Patch embed patch size
+        c: Num channels
+        x: (N, L, patch_size**2 *C)
+        """
+        # p = self.patch_embed.patch_size[0]
+        assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
+
+        # c = self.in_c
+        h = w = imgs.shape[2] // p
+        x = imgs.reshape(shape=(imgs.shape[0], c, h, p, w, p))
+        x = torch.einsum('nchpwq->nhwpqc', x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p ** 2 * c))
+        return x
+
     def unpatchify(self, x, p, c):
         """
         x: (N, L, patch_size**2 *C)
@@ -85,44 +196,37 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def forward(self, x, time=None):
-
+    def forward(self, x, time):
         B = x.shape[0]
         x = self.patch_embed(x)
-        if time==None and not self.use_generative and self.use_temb:
-            time= torch.zeros(B//2 + 1, device=x.device)
-            time = torch.cat([time, self.num_timesteps - time - 1], dim=0)[:B]
-        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
-        time = time.unsqueeze(1)  # (N, 1, D)
 
         cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
-        x = torch.cat((cls_tokens, x), dim=1)
+        x = torch.cat((cls_tokens, x), dim=1)  # (N, L+1, D)
         x = x + self.pos_embed
         x = self.pos_drop(x)
-        x = x + time
-        for blk in self.blocks:
-            x = x + blk(x)
 
-        if self.global_pool:
-            x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
-            outcome = self.fc_norm(x)
-        else:
-            x = self.norm(x)
-            outcome = x[:, 0] # B,D
-        if self.use_generative:
-        # remove cls token
-            x = x[:, 1:, :]
+        # embed time
+        time = get_timestep_embedding(time, x.shape[-1])  # (N, D)
+        time = time.unsqueeze(1)  # (N, 1, D)
+        temb = self.temb(time)  # (N, 1, D_t)
 
-            x = self.img_restore(x)  # N, L, P*P*C
-            print(x.shape)
-            # unpatchify
+        for i, blk in enumerate(self.blocks):
+            x = blk(x + self.temb_blocks[i](temb))  # (N, L+1, D)
 
-            x = self.unpatchify(x, self.patch_size, self.in_chans)  # (N, C, H, W)
-            print(x.shape)
+        x = self.norm(x)
 
-            return x
-        else:
-            return self.head(outcome)
+        x = self.decoder_pred(x)  # (N, L+1, p^2 * C)
+
+        # Remove cls token
+        x = x[:, 1:, :]  # (N, L, p^2 * C)
+
+        # Unpatchify
+        x = self.unpatchify(x, self.patch_size, self.in_c)  # (N, C, H, W)
+
+        # Final conv
+        x = self.final_conv(x)  # (N, C, H, W)
+
+        return x
 class ViTFinetune(VisionTransformer):
     def __init__(self, use_temb=False, num_timesteps=1000, *args, **kwargs):
         super().__init__(*args, **kwargs)
