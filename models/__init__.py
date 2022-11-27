@@ -99,7 +99,7 @@ def get_model(config):
         img_size = config.data.image_size
         patch_size = config.model.patch_size
         in_chans = config.model.in_channels
-        num_classes = config.model.num_classes,
+        num_classes = config.model.nb_classes,
         # global_pool = 'token',
         embed_dim = config.model.embed_dim
         depth = config.model.depth
