@@ -149,7 +149,7 @@ def get_model(config):
                 embed_dim=embed_dim,
                 depth=depth,
                 num_heads=num_attn_heads,
-
+                use_final_conv=use_final_conv,
                 mlp_ratio=mlp_ratio,
                 drop_rate=dropout,
                 temb_dim=temb_dim,
