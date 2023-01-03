@@ -16,8 +16,8 @@ model:
     temb_dim: 512
     encoder:
         embed_dim: 384
-        depth: 24
-        num_heads: 12
+        depth: 12
+        num_heads: 6
     decoder:
         embed_dim: 384
         depth: 12
@@ -41,7 +41,7 @@ diffusion:
     num_diffusion_timesteps: 1000
 
 training:
-    batch_size: 128
+    batch_size: 16
     n_epochs: 10000
     n_iters: 5000000
     snapshot_freq: 5000

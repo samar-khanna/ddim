@@ -140,6 +140,7 @@ def get_model(config):
         # act_layer = None,
         # block_fn = Block,
         if is_finetune:
+            print('in fine tune')
             use_temb = config.model.use_temb
             return ViTFinetune(
                 img_size=img_size,

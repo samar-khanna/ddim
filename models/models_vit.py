@@ -240,7 +240,7 @@ class ViTFinetune(VisionTransformer):
         norm_layer = nn.LayerNorm
         embed_dim = kwargs['embed_dim']
         self.fc_norm = norm_layer(embed_dim)
-
+        print('HEAD', self.head)
         del self.decoder_pred
         del self.final_conv
 
@@ -271,7 +271,7 @@ class ViTFinetune(VisionTransformer):
 
         x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
         x = self.fc_norm(x)  # (N, D)
-
+    
         outcome = self.head(x)  # (N, #classes)
         return outcome
 

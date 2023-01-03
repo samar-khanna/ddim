@@ -309,7 +309,8 @@ def main(args):
             # assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
 
         # manually initialize fc layer
-        trunc_normal_(model.head.weight, std=2e-5)
+        #print('model keys',model.state_dict().keys())
+        #trunc_normal_(model.head.weight, std=2e-5)
 
     model.to(device)
 
