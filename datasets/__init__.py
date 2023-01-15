@@ -10,6 +10,8 @@ from datasets.lsun import LSUN
 from torch.utils.data import Subset
 import numpy as np
 
+from datasets.fmow import build_fmow_dataset
+
 
 class Crop(object):
     def __init__(self, x1, x2, y1, y2):
@@ -175,6 +177,10 @@ def get_dataset(args, config):
         )
         test_dataset = Subset(dataset, test_indices)
         dataset = Subset(dataset, train_indices)
+    elif config.data.dataset=='FMOW':
+
+        dataset = build_fmow_dataset(is_train=True, config=config)
+        test_dataset= build_fmow_dataset(is_train=False, config=config)
     else:
         dataset, test_dataset = None, None
 
