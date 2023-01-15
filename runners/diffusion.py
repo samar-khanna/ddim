@@ -15,8 +15,15 @@ from functions import get_optimizer
 from functions.losses import loss_registry
 from datasets import get_dataset, data_transform, inverse_data_transform
 from functions.ckpt_util import get_ckpt_path
+import timm.optim.optim_factory as optim_factory
 
 import torchvision.utils as tvu
+
+from util import misc
+from datasets import build_fmow_dataset
+#from misc import NativeScalerWithGradNormCount as NativeScaler
+
+from util import lr_sched
 
 
 def torch2hwcuint8(x, clip=False):
@@ -32,13 +39,13 @@ def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_time
 
     if beta_schedule == "quad":
         betas = (
-            np.linspace(
-                beta_start ** 0.5,
-                beta_end ** 0.5,
-                num_diffusion_timesteps,
-                dtype=np.float64,
-            )
-            ** 2
+                np.linspace(
+                    beta_start ** 0.5,
+                    beta_end ** 0.5,
+                    num_diffusion_timesteps,
+                    dtype=np.float64,
+                )
+                ** 2
         )
     elif beta_schedule == "linear":
         betas = np.linspace(
@@ -87,7 +94,7 @@ class Diffusion(object):
             [torch.ones(1).to(device), alphas_cumprod[:-1]], dim=0
         )
         posterior_variance = (
-            betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
+                betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         )
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
@@ -178,7 +185,7 @@ class Diffusion(object):
                 tb_logger.add_scalar("loss", loss, global_step=step)
 
                 logging.info(
-                    f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
+                    f"step: {step}, loss: {loss.item()}, data time: {data_time / (i + 1)}"
                 )
 
                 if self.args.wandb is not None:
@@ -199,6 +206,179 @@ class Diffusion(object):
                         os.path.join(self.args.log_path, "ckpt_{}.pth".format(step)),
                     )
                     torch.save(states, os.path.join(self.args.log_path, "ckpt.pth"))
+
+                data_start = time.time()
+
+    def train_fmow(self):
+        args, config = self.args, self.config
+
+        accum_iter = self.args.accum_iter
+
+        tb_logger = self.config.tb_logger
+        dataset, test_dataset = get_dataset(self.args, config)
+        num_tasks = misc.get_world_size()
+        global_rank = misc.get_rank()
+        sampler_train = torch.utils.data.DistributedSampler(
+            dataset, num_replicas=num_tasks, rank=global_rank, shuffle=True
+        )
+        print("Sampler_train = %s" % str(sampler_train))
+        train_loader = data.DataLoader(
+            dataset, sampler=sampler_train,
+            batch_size=config.training.batch_size,
+            num_workers=config.data.num_workers,
+            pin_memory=True,
+            drop_last=True,
+        )
+        # train_loader = data.DataLoader(
+        #     dataset,
+        #     batch_size=config.training.batch_size,
+        #     shuffle=True,
+        #     num_workers=config.data.num_workers,
+        # )
+        model = get_model(config)
+
+        model = model.to(self.device)
+        # model = torch.nn.DataParallel(model)
+        model_without_ddp = model
+        print("Model = %s" % str(model_without_ddp))
+
+        eff_batch_size = config.training.batch_size * self.args.accum_iter * misc.get_world_size()
+
+        if self.args.lr is None:  # only base_lr is specified
+            self.args.lr = self.args.blr * eff_batch_size / 256
+
+        print("base lr: %.2e" % (self.args.lr * 256 / eff_batch_size))
+        print("actual lr: %.2e" % self.args.lr)
+
+        print("accumulate grad iterations: %d" % self.args.accum_iter)
+        print("effective batch size: %d" % eff_batch_size)
+
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                          find_unused_parameters=True)
+        model_without_ddp = model.module
+
+        # following timm: set wd as 0 for bias and norm layers
+        param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+        optimizer = torch.optim.AdamW(param_groups, lr=self.args.lr, betas=(0.9, 0.95))
+        print(optimizer)
+        loss_scaler = misc.NativeScalerWithGradNormCount()
+
+        misc.load_model(args=self.args, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                        loss_scaler=loss_scaler)
+
+        # Get model info
+        n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logging.info('number of params (M): %.2f' % (n_parameters / 1.e6))
+
+        # optimizer = get_optimizer(self.config, model.parameters())
+
+        if self.config.model.ema:
+            ema_helper = EMAHelper(mu=self.config.model.ema_rate)
+            ema_helper.register(model)
+        else:
+            ema_helper = None
+
+        # Watch model (W&B)
+        if global_rank == 0 and self.args.wandb is not None:
+            wandb.watch(model)
+
+        start_epoch, step = 0, 0
+        # if self.args.resume_training:
+        #     states = torch.load(os.path.join(self.args.log_path, "ckpt.pth"))
+        #     model.load_state_dict(states[0])
+        #
+        #     states[1]["param_groups"][0]["eps"] = self.config.optim.eps
+        #     optimizer.load_state_dict(states[1])
+        #     start_epoch = states[2]
+        #     step = states[3]
+        #     if self.config.model.ema:
+        #         ema_helper.load_state_dict(states[4])
+
+        for epoch in range(start_epoch, self.config.training.n_epochs):
+            data_start = time.time()
+            data_time = 0
+
+            train_loader.sampler.set_epoch(epoch)
+            for i, (x, y) in enumerate(train_loader):
+                n = x.size(0)
+                data_time += time.time() - data_start
+                model.train()
+                step += 1
+                if i % accum_iter == 0:
+                    lr_sched.adjust_learning_rate(optimizer, i / len(train_loader) + epoch, args)
+                x = x.to(self.device)
+                x = data_transform(self.config, x)
+                e = torch.randn_like(x)
+                b = self.betas
+
+                # antithetic sampling
+                t = torch.randint(
+                    low=0, high=self.num_timesteps, size=(n // 2 + 1,)
+                ).to(self.device)
+                t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]  # I don't get this!!f
+                loss = loss_registry[config.model.type](model, x, t, e, b)
+                loss /= accum_iter
+                loss_scaler(loss, optimizer, parameters=model.parameters(),
+                            update_grad=(i + 1) % accum_iter == 0)
+                if (i + 1) % accum_iter == 0:
+                    optimizer.zero_grad()
+                torch.cuda.synchronize()
+
+                # metric_logger.update(loss=loss_value)
+
+                lr = optimizer.param_groups[0]["lr"]
+                # metric_logger.update(lr=lr)
+
+                loss_value_reduce = misc.all_reduce_mean(loss)  # I don't get this as well
+                epoch_1000x = int((i / len(train_loader) + epoch) * 1000)
+                if args.local_rank == 0 and args.wandb is not None:
+                    try:
+                        wandb.log({'train_loss_step': loss_value_reduce,
+                                   'train_lr_step': lr, 'epoch_1000x': epoch_1000x})
+                    except ValueError:
+                        pass
+
+                # loss.backward()
+                #
+                # try:
+                #     torch.nn.utils.clip_grad_norm_(
+                #         model.parameters(), config.optim.grad_clip
+                #     )
+                # except Exception:
+                #     pass
+                # optimizer.step()
+
+                if self.config.model.ema:
+                    ema_helper.update(model)
+
+                # # Log info
+                # tb_logger.add_scalar("loss", loss, global_step=step)
+                #
+                # logging.info(
+                #     f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
+                # )
+
+                if global_rank == 0 and self.args.wandb is not None:
+                    wandb.log({'Train/loss': loss.item(), 'Train/step': step})
+
+                if step % self.config.training.snapshot_freq == 0 or step == 1:
+                    states = [
+                        model.state_dict(),
+                        optimizer.state_dict(),
+                        epoch,
+                        step,
+                    ]
+                    if self.config.model.ema:
+                        states.append(ema_helper.state_dict())
+                    misc.save_model(
+                        args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                        loss_scaler=loss_scaler, epoch=epoch)
+
+                    # torch.save(
+                    #     states,
+                    #     os.path.join(self.args.log_path, "ckpt_{}.pth".format(step)),
+                    # )
+                    # torch.save(states, os.path.join(self.args.log_path, "ckpt.pth"))
 
                 data_start = time.time()
 
@@ -263,7 +443,7 @@ class Diffusion(object):
 
         with torch.no_grad():
             for _ in tqdm.tqdm(
-                range(n_rounds), desc="Generating image samples for FID evaluation."
+                    range(n_rounds), desc="Generating image samples for FID evaluation."
             ):
                 n = config.sampling.batch_size
                 x = torch.randn(
@@ -277,7 +457,8 @@ class Diffusion(object):
                 x = self.sample_image(x, model)
                 x = inverse_data_transform(config, x)
 
-                tvu.save_image(x, os.path.join(self.args.image_folder, f"image_grid.png"), n_row=int(np.sqrt(x.shape[0])))
+                tvu.save_image(x, os.path.join(self.args.image_folder, f"image_grid.png"),
+                               n_row=int(np.sqrt(x.shape[0])))
                 # for i in range(n):
                 #     tvu.save_image(
                 #         x[i], os.path.join(self.args.image_folder, f"{img_id}.png")
@@ -313,8 +494,8 @@ class Diffusion(object):
         def slerp(z1, z2, alpha):
             theta = torch.acos(torch.sum(z1 * z2) / (torch.norm(z1) * torch.norm(z2)))
             return (
-                torch.sin((1 - alpha) * theta) / torch.sin(theta) * z1
-                + torch.sin(alpha * theta) / torch.sin(theta) * z2
+                    torch.sin((1 - alpha) * theta) / torch.sin(theta) * z1
+                    + torch.sin(alpha * theta) / torch.sin(theta) * z2
             )
 
         z1 = torch.randn(
@@ -342,7 +523,7 @@ class Diffusion(object):
         # Hard coded here, modify to your preferences
         with torch.no_grad():
             for i in range(0, x.size(0), 8):
-                xs.append(self.sample_image(x[i : i + 8], model))
+                xs.append(self.sample_image(x[i: i + 8], model))
         x = inverse_data_transform(config, torch.cat(xs, dim=0))
         for i in range(x.size(0)):
             tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{i}.png"))
@@ -359,10 +540,10 @@ class Diffusion(object):
                 seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
                 seq = (
-                    np.linspace(
-                        0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
-                    )
-                    ** 2
+                        np.linspace(
+                            0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
+                        )
+                        ** 2
                 )
                 seq = [int(s) for s in list(seq)]
             else:
@@ -380,10 +561,10 @@ class Diffusion(object):
                 seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
                 seq = (
-                    np.linspace(
-                        0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
-                    )
-                    ** 2
+                        np.linspace(
+                            0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
+                        )
+                        ** 2
                 )
                 seq = [int(s) for s in list(seq)]
             else:
