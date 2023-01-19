@@ -36,6 +36,8 @@ model:
 
 diffusion:
     beta_schedule: cosine
+    beta_start: 0.0001  # unused
+    beta_end: 0.02  # unused
     num_diffusion_timesteps: 1000
 
 training:
