@@ -12,7 +12,7 @@ import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block, Mlp
 
 from models.pos_embed import get_2d_sincos_pos_embed
-from models.time_embed import get_timestep_embedding, ZerosLike
+from models.time_embed import timestep_embedding, ZerosLike
 
 
 class UMaskedAutoencoderViT(nn.Module):
@@ -232,7 +232,7 @@ class UMaskedAutoencoderViT(nn.Module):
     def forward(self, imgs, time, mask_ratio=0.):
         # embed time
         enc_dim = self.patch_embed.proj.out_channels
-        time = get_timestep_embedding(time, enc_dim)  # (N, D)
+        time = timestep_embedding(time, enc_dim)  # (N, D)
         time = time.unsqueeze(1)  # (N, 1, D)
         temb = self.temb(time)  # (N, 1, D_t)
 
