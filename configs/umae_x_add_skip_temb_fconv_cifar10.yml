@@ -27,7 +27,7 @@ model:
     skip_idxs: [[1, 10], [3, 8], [5, 6], [7, 4], [9, 2]]
     use_final_conv: true
 
-    dropout: 0.1
+    dropout: 0.3
     mlp_ratio: 4
 
     var_type: fixedlarge
@@ -38,7 +38,7 @@ diffusion:
     beta_schedule: cosine
     beta_start: 0.0001  # unused
     beta_end: 0.02  # unused
-    num_diffusion_timesteps: 1000
+    num_diffusion_timesteps: 4000
 
 training:
     batch_size: 128
@@ -54,7 +54,7 @@ sampling:
 optim:
     weight_decay: 0.001
     optimizer: "AdamW"
-    lr: 0.0003
+    lr: 0.0002
     beta1: 0.9
     amsgrad: false
     eps: 0.00000001
