@@ -2,6 +2,8 @@ import math
 import torch
 import torch.nn as nn
 
+from models.time_embed import timestep_embedding
+
 
 def get_timestep_embedding(timesteps, embedding_dim):
     """
@@ -294,7 +296,7 @@ class UNet(nn.Module):
         assert x.shape[2] == x.shape[3] == self.resolution
 
         # timestep embedding
-        temb = get_timestep_embedding(t, self.ch)
+        temb = timestep_embedding(t, self.ch)
         temb = self.temb.dense[0](temb)
         temb = nonlinearity(temb)
         temb = self.temb.dense[1](temb)

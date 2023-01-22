@@ -44,7 +44,7 @@ def generarlized_image_steps(x, seq, model, b, **kwargs):
             at = compute_alpha(b, t.long())
             at_next = compute_alpha(b, next_t.long())
             xt = xs[-1].to('cuda')
-            x0_t = model(xt, t)
+            x0_t = model(xt, t / len(b))  # !!!! Note: divide t by total steps
             et = (xt - at.sqrt() * x0_t)/(1 - at).sqrt()
             x0_preds.append(x0_t.to('cpu'))
             c1 = (

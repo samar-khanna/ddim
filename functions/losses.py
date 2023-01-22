@@ -24,7 +24,7 @@ def snr_image_loss(
 ):
     a = (1 - b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
     x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
-    output = model(x, t.float())
+    output = model(x, t.float() / len(b))  # !!! Note: divide t by total num timesteps
 
     a = a.view(-1)
     batch_loss = (a/(1.0-a)).clamp(min=1.0) * (x0 - output).pow(2).sum(dim=(1, 2, 3))  # (N,)
