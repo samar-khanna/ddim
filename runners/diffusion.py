@@ -306,7 +306,7 @@ class Diffusion(object):
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 
         with torch.no_grad():
-            for _ in tqdm.tqdm(
+            for i in tqdm.tqdm(
                 range(n_rounds), desc="Generating image samples for FID evaluation."
             ):
                 n = config.sampling.batch_size
@@ -321,7 +321,7 @@ class Diffusion(object):
                 x = self.sample_image(x, model)
                 x = inverse_data_transform(config, x)
 
-                tvu.save_image(x, os.path.join(self.args.image_folder, f"image_grid.png"), n_row=int(np.sqrt(x.shape[0])))
+                tvu.save_image(x, os.path.join(self.args.image_folder, f"image_grid{i}.png"), n_row=int(np.sqrt(x.shape[0])))
                 # for i in range(n):
                 #     tvu.save_image(
                 #         x[i], os.path.join(self.args.image_folder, f"{img_id}.png")
