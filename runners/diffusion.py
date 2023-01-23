@@ -90,7 +90,7 @@ def get_time_steps(noise_schedule, skip_type, t_T, t_0, N, device):
         lambda_0 = noise_schedule.marginal_lambda(torch.tensor(t_0).to(device))
         logSNR_steps = torch.linspace(lambda_T.cpu().item(), lambda_0.cpu().item(), N + 1).to(device)
         return noise_schedule.inverse_lambda(logSNR_steps)
-    elif skip_type == 'time_uniform':
+    elif skip_type == 'time_uniform' or skip_type == 'uniform':
         return torch.linspace(t_T, t_0, N + 1).to(device)
     elif skip_type == 'time_quadratic':
         t_order = 2
