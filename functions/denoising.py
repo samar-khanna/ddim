@@ -7,7 +7,20 @@ def compute_alpha(beta, t):
     return a
 
 
-def generalized_steps(x, seq, model, b, **kwargs):
+def expand_dims(v, dims):
+    """
+    Expand the tensor `v` to the dim `dims`.
+    Args:
+        `v`: a PyTorch tensor with shape [N].
+        `dim`: a `int`.
+    Returns:
+        a PyTorch tensor with shape [N, 1, 1, ..., 1] and the total dimension is `dims`.
+    """
+    return v[(...,) + (None,) * (dims - 1)]
+
+
+def generalized_steps(x, seq, model, noise_schedule, **kwargs):
+    ns = noise_schedule
     with torch.no_grad():
         n = x.size(0)
         seq_next = [-1] + list(seq[:-1])
@@ -16,8 +29,10 @@ def generalized_steps(x, seq, model, b, **kwargs):
         for i, j in zip(reversed(seq), reversed(seq_next)):
             t = (torch.ones(n) * i).to(x.device)
             next_t = (torch.ones(n) * j).to(x.device)
-            at = compute_alpha(b, t.long())
-            at_next = compute_alpha(b, next_t.long())
+            at = ns.marginal_alpha((t + 1.)/ns.total_N).pow(2)
+            at_next = ns.marginal_alpha((next_t + 1.)/ns.total_N).pow(2)
+            # at = compute_alpha(b, t.long())
+            # at_next = compute_alpha(b, next_t.long())
             xt = xs[-1].to('cuda')
             et = model(xt, t)
             x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
@@ -32,43 +47,68 @@ def generalized_steps(x, seq, model, b, **kwargs):
     return xs, x0_preds
 
 
-def generarlized_image_steps(x, seq, model, b, **kwargs):
+def generalized_image_steps(x, seq, model, noise_schedule, **kwargs):
+    ns = noise_schedule
     with torch.no_grad():
         n = x.size(0)
-        seq_next = [-1] + list(seq[:-1])
+        dims = x.dim()
+
         x0_preds = []
         xs = [x]
-        for i, j in zip(reversed(seq), reversed(seq_next)):
-            t = (torch.ones(n) * i).to(x.device)
-            next_t = (torch.ones(n) * j).to(x.device)
-            at = compute_alpha(b, t.long())
-            at_next = compute_alpha(b, next_t.long())
-            xt = xs[-1].to('cuda')
-            x0_t = model(xt, t / len(b))  # !!!! Note: divide t by total steps
-            et = (xt - at.sqrt() * x0_t)/(1 - at).sqrt()
-            x0_preds.append(x0_t.to('cpu'))
-            c1 = (
-                kwargs.get("eta", 0) * ((1 - at / at_next) * (1 - at_next) / (1 - at)).sqrt()
+        for s, t in zip(seq, seq[1:]):
+            s = (torch.ones(n) * s).to(x.device)
+            t = (torch.ones(n) * t).to(x.device)
+
+            lambda_s, lambda_t = ns.marginal_lambda(s), ns.marginal_lambda(t)
+            h = lambda_t - lambda_s
+            log_alpha_s, log_alpha_t = ns.marginal_log_mean_coeff(s), ns.marginal_log_mean_coeff(t)
+            sigma_s, sigma_t = ns.marginal_std(s), ns.marginal_std(t)
+            alpha_t = torch.exp(log_alpha_t)
+
+            phi_1 = torch.expm1(-h)
+
+            x_prev = xs[-1].to(x.device)
+            model_s = model(x_prev, s)
+            x_next = (
+                    expand_dims(sigma_t / sigma_s, dims) * x_prev
+                    - expand_dims(alpha_t * phi_1, dims) * model_s
             )
-            c2 = ((1 - at_next) - c1 ** 2).sqrt()
-            xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x) + c2 * et
-            xs.append(xt_next.to('cpu'))
+            xs.append(x_next.to('cpu'))
+
+        # seq_next = [-1] + list(seq[:-1])
+        # for i, j in zip(reversed(seq), reversed(seq_next)):
+        #     t = (torch.ones(n) * i).to(x.device)
+        #     next_t = (torch.ones(n) * j).to(x.device)
+        #     at = ns.marginal_alpha((t + 1.)/ns.total_N).pow(2)
+        #     at_next = ns.marginal_alpha((next_t + 1.)/ns.total_N).pow(2)
+        #     xt = xs[-1].to('cuda')
+        #     x0_t = model(xt, (t + 1.)/ns.total_N)  # !!!! Note: divide t by total steps
+        #     et = (xt - at.sqrt() * x0_t)/(1 - at).sqrt()
+        #     x0_preds.append(x0_t.to('cpu'))
+        #     c1 = (
+        #         kwargs.get("eta", 0) * ((1 - at / at_next) * (1 - at_next) / (1 - at)).sqrt()
+        #     )
+        #     c2 = ((1 - at_next) - c1 ** 2).sqrt()
+        #     xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x) + c2 * et
+        #     xs.append(xt_next.to('cpu'))
 
     return xs, x0_preds
 
 
-def ddpm_steps(x, seq, model, b, **kwargs):
+def ddpm_steps(x, seq, model, noise_schedule, **kwargs):
+    ns = noise_schedule
     with torch.no_grad():
         n = x.size(0)
         seq_next = [-1] + list(seq[:-1])
         xs = [x]
         x0_preds = []
-        betas = b
         for i, j in zip(reversed(seq), reversed(seq_next)):
             t = (torch.ones(n) * i).to(x.device)
             next_t = (torch.ones(n) * j).to(x.device)
-            at = compute_alpha(betas, t.long())
-            atm1 = compute_alpha(betas, next_t.long())
+            at = ns.marginal_alpha((t + 1.)/ns.total_N).pow(2)
+            atm1 = ns.marginal_alpha((next_t + 1.)/ns.total_N).pow(2)
+            # at = compute_alpha(betas, t.long())
+            # atm1 = compute_alpha(betas, next_t.long())
             beta_t = 1 - at / atm1
             x = xs[-1].to('cuda')
 

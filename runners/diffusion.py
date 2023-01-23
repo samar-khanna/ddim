@@ -15,6 +15,7 @@ from functions import get_optimizer
 from functions.losses import loss_registry
 from datasets import get_dataset, data_transform, inverse_data_transform
 from functions.ckpt_util import get_ckpt_path
+from runners.noise_schedule import NoiseScheduleVP, betas_for_alpha_bar
 
 import torchvision.utils as tvu
 
@@ -26,26 +27,7 @@ def torch2hwcuint8(x, clip=False):
     return x
 
 
-def betas_for_alpha_bar(num_diffusion_timesteps, alpha_bar, max_beta=0.999):
-    """
-    Create a beta schedule that discretizes the given alpha_t_bar function,
-    which defines the cumulative product of (1-beta) over time from t = [0,1].
-    :param num_diffusion_timesteps: the number of betas to produce.
-    :param alpha_bar: a lambda that takes an argument t from 0 to 1 and
-                      produces the cumulative product of (1-beta) up to that
-                      part of the diffusion process.
-    :param max_beta: the maximum beta to use; use values lower than 1 to
-                     prevent singularities.
-    """
-    betas = []
-    for i in range(num_diffusion_timesteps):
-        t1 = i / num_diffusion_timesteps
-        t2 = (i + 1) / num_diffusion_timesteps
-        betas.append(min(1 - alpha_bar(t2) / alpha_bar(t1), max_beta))
-    return np.array(betas, dtype=np.float64)
-
-
-def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_timesteps):
+def get_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_timesteps):
     def sigmoid(x):
         return 1 / (np.exp(-x) + 1)
 
@@ -59,28 +41,64 @@ def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_time
             )
             ** 2
         )
+        noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.as_tensor(betas))
     elif beta_schedule == "linear":
         betas = np.linspace(
             beta_start, beta_end, num_diffusion_timesteps, dtype=np.float64
         )
+        noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.as_tensor(betas))
     elif beta_schedule == 'cosine':
         betas = betas_for_alpha_bar(
             num_diffusion_timesteps,
             lambda t: np.cos((t + 0.008) / 1.008 * np.pi / 2) ** 2,
         )
+        noise_schedule = NoiseScheduleVP(schedule='cosine')
     elif beta_schedule == "const":
         betas = beta_end * np.ones(num_diffusion_timesteps, dtype=np.float64)
+        noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.as_tensor(betas))
     elif beta_schedule == "jsd":  # 1/T, 1/(T-1), 1/(T-2), ..., 1
         betas = 1.0 / np.linspace(
             num_diffusion_timesteps, 1, num_diffusion_timesteps, dtype=np.float64
         )
+        noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.as_tensor(betas))
     elif beta_schedule == "sigmoid":
         betas = np.linspace(-6, 6, num_diffusion_timesteps)
         betas = sigmoid(betas) * (beta_end - beta_start) + beta_start
+        noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.as_tensor(betas))
     else:
         raise NotImplementedError(beta_schedule)
     assert betas.shape == (num_diffusion_timesteps,)
-    return betas
+    return betas, noise_schedule
+
+
+def get_time_steps(noise_schedule, skip_type, t_T, t_0, N, device):
+    """Compute the intermediate time steps for sampling.
+    Args:
+        skip_type: A `str`. The type for the spacing of the time steps. We support three types:
+            - 'logSNR': uniform logSNR for the time steps.
+            - 'time_uniform': uniform time for the time steps. (**Recommended for high-resolutional data**.)
+            - 'time_quadratic': quadratic time for the time steps. (Used in DDIM for low-resolutional data.)
+        t_T: A `float`. The starting time of the sampling (default is T).
+        t_0: A `float`. The ending time of the sampling (default is epsilon).
+        N: A `int`. The total number of the spacing of the time steps.
+        device: A torch device.
+    Returns:
+        A pytorch tensor of the time steps, with the shape (N + 1,).
+    """
+    if skip_type == 'logSNR':
+        lambda_T = noise_schedule.marginal_lambda(torch.tensor(t_T).to(device))
+        lambda_0 = noise_schedule.marginal_lambda(torch.tensor(t_0).to(device))
+        logSNR_steps = torch.linspace(lambda_T.cpu().item(), lambda_0.cpu().item(), N + 1).to(device)
+        return noise_schedule.inverse_lambda(logSNR_steps)
+    elif skip_type == 'time_uniform':
+        return torch.linspace(t_T, t_0, N + 1).to(device)
+    elif skip_type == 'time_quadratic':
+        t_order = 2
+        t = torch.linspace(t_T ** (1. / t_order), t_0 ** (1. / t_order), N + 1).pow(t_order).to(device)
+        return t
+    else:
+        raise ValueError(
+            "Unsupported skip_type {}, need to be 'logSNR' or 'time_uniform' or 'time_quadratic'".format(skip_type))
 
 
 class Diffusion(object):
@@ -96,7 +114,7 @@ class Diffusion(object):
         self.device = device
 
         self.model_var_type = config.model.var_type
-        betas = get_beta_schedule(
+        betas, noise_schedule = get_schedule(
             beta_schedule=config.diffusion.beta_schedule,
             beta_start=config.diffusion.beta_start,
             beta_end=config.diffusion.beta_end,
@@ -104,6 +122,7 @@ class Diffusion(object):
         )
         betas = self.betas = torch.from_numpy(betas).float().to(self.device)
         self.num_timesteps = betas.shape[0]
+        self.noise_schedule = noise_schedule
 
         alphas = 1.0 - betas
         alphas_cumprod = alphas.cumprod(dim=0)
@@ -178,11 +197,12 @@ class Diffusion(object):
                 b = self.betas
 
                 # antithetic sampling
-                t = torch.randint(
-                    low=0, high=self.num_timesteps, size=(n // 2 + 1,)
-                ).to(self.device)
-                t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
-                loss = loss_registry[config.model.type](model, x, t, e, b)
+                t = torch.rand(size=(n // 2 + 1,)).to(self.device)
+                # t = torch.randint(
+                #     low=0, high=self.num_timesteps, size=(n // 2 + 1,)
+                # ).to(self.device)
+                t = torch.cat([t, (1.0 - t).clamp(max=0.999)], dim=0)[:n]
+                loss = loss_registry[config.model.type](model, x, t, e, self.noise_schedule)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -377,31 +397,39 @@ class Diffusion(object):
         except Exception:
             skip = 1
 
-        if self.args.sample_type.startswith("generalized"):
+        t_T = self.noise_schedule.T
+        t_0 = 1. / self.noise_schedule.total_N if self.noise_schedule.schedule == 'discrete' else 1e-4
+        t_seq = get_time_steps(self.noise_schedule, self.args.skip_type, t_T, t_0, self.args.timesteps, self.device)
+
+        if self.args.sample_type == "generalized":
+
             if self.args.skip_type == "uniform":
                 skip = self.num_timesteps // self.args.timesteps
-                seq = range(0, self.num_timesteps, skip)
+                t_seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
-                seq = (
+                t_seq = (
                     np.linspace(
                         0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
                     )
                     ** 2
                 )
-                seq = [int(s) for s in list(seq)]
+                t_seq = [int(s) for s in list(t_seq)]
             else:
                 raise NotImplementedError
-            from functions.denoising import generalized_steps, generarlized_image_steps
+            from functions.denoising import generalized_steps
 
-            if self.args.sample_type == "generalized_image":
-                xs = generarlized_image_steps(x, seq, model, self.betas, eta=self.args.eta)
-            else:
-                xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta)
+            xs = generalized_steps(x, t_seq, model, self.noise_schedule, eta=self.args.eta)
             x = xs
+        elif self.args.sample_type == "generalized_image":
+            from functions.denoising import generalized_image_steps
+
+            xs = generalized_image_steps(x, t_seq, model, self.noise_schedule, eta=self.args.eta)
+            x = xs
+
         elif self.args.sample_type == "ddpm_noisy":
             if self.args.skip_type == "uniform":
                 skip = self.num_timesteps // self.args.timesteps
-                seq = range(0, self.num_timesteps, skip)
+                t_seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
                 seq = (
                     np.linspace(
@@ -409,12 +437,12 @@ class Diffusion(object):
                     )
                     ** 2
                 )
-                seq = [int(s) for s in list(seq)]
+                t_seq = [int(s) for s in list(t_seq)]
             else:
                 raise NotImplementedError
             from functions.denoising import ddpm_steps
 
-            x = ddpm_steps(x, seq, model, self.betas)
+            x = ddpm_steps(x, t_seq, model, self.noise_schedule)
         else:
             raise NotImplementedError
         if last:
