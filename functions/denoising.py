@@ -56,8 +56,8 @@ def generalized_image_steps(x, seq, model, noise_schedule, **kwargs):
         x0_preds = []
         xs = [x]
         for s, t in zip(seq, seq[1:]):
-            s_vec = (torch.ones(n) * s).to(x.device)
-            t_vec = (torch.ones(n) * t).to(x.device)
+            s_vec = (torch.ones(n) * s.item()).to(x.device)
+            t_vec = (torch.ones(n) * t.item()).to(x.device)
 
             lambda_s, lambda_t = ns.marginal_lambda(s_vec), ns.marginal_lambda(t_vec)
             h = lambda_t - lambda_s
