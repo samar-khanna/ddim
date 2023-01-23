@@ -30,10 +30,11 @@ def snr_image_loss(
 
     a = noise_schedule.marginal_alpha(t).view(-1, 1, 1, 1)
     sigma = noise_schedule.marginal_std(t).view(-1, 1, 1, 1)
+    logsnr = 2.0 * noise_schedule.marginal_lambda(t).view(-1, 1, 1, 1)
     x = x0 * a + e * sigma
 
     x0_pred = model(x, t.float())
-    eps_pred = (x - a * x0_pred)/sigma
+    eps_pred = (1. + logsnr.exp()).sqrt() * (x - x0 * (1. + (-logsnr).exp()).rsqrt())
 
     x_mse = (x0 - x0_pred).pow(2).mean(dim=(1, 2, 3))  # (N,)
     eps_mse = (e - eps_pred).pow(2).mean(dim=(1, 2, 3))  # (N,)
