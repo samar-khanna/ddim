@@ -56,19 +56,19 @@ def generalized_image_steps(x, seq, model, noise_schedule, **kwargs):
         x0_preds = []
         xs = [x]
         for s, t in zip(seq, seq[1:]):
-            s = (torch.ones(n) * s).to(x.device)
-            t = (torch.ones(n) * t).to(x.device)
+            s_vec = (torch.ones(n) * s).to(x.device)
+            t_vec = (torch.ones(n) * t).to(x.device)
 
-            lambda_s, lambda_t = ns.marginal_lambda(s), ns.marginal_lambda(t)
+            lambda_s, lambda_t = ns.marginal_lambda(s_vec), ns.marginal_lambda(t_vec)
             h = lambda_t - lambda_s
-            log_alpha_s, log_alpha_t = ns.marginal_log_mean_coeff(s), ns.marginal_log_mean_coeff(t)
-            sigma_s, sigma_t = ns.marginal_std(s), ns.marginal_std(t)
+            log_alpha_s, log_alpha_t = ns.marginal_log_mean_coeff(s_vec), ns.marginal_log_mean_coeff(t_vec)
+            sigma_s, sigma_t = ns.marginal_std(s_vec), ns.marginal_std(t_vec)
             alpha_t = torch.exp(log_alpha_t)
 
             phi_1 = torch.expm1(-h)
 
             x_prev = xs[-1].to(x.device)
-            model_s = model(x_prev, s)
+            model_s = model(x_prev, s_vec)
             x_next = (
                     expand_dims(sigma_t / sigma_s, dims) * x_prev
                     - expand_dims(alpha_t * phi_1, dims) * model_s
