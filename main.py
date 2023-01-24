@@ -92,6 +92,8 @@ def parse_args_and_config():
         help="eta used to control the variances of sigma",
     )
     parser.add_argument("--sequence", action="store_true")
+    parser.add_argument('--final_denoise', action="store_false", default=True,
+                        help="Whether to denoise on last sampling step")
 
     args = parser.parse_args()
     args.log_path = os.path.join(args.exp, "logs", args.doc)

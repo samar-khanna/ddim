@@ -403,27 +403,32 @@ class Diffusion(object):
 
         if self.args.sample_type == "generalized":
 
-            if self.args.skip_type == "uniform":
-                skip = self.num_timesteps // self.args.timesteps
-                t_seq = range(0, self.num_timesteps, skip)
-            elif self.args.skip_type == "quad":
-                t_seq = (
-                    np.linspace(
-                        0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
-                    )
-                    ** 2
-                )
-                t_seq = [int(s) for s in list(t_seq)]
-            else:
-                raise NotImplementedError
+            # if self.args.skip_type == "uniform":
+            #     skip = self.num_timesteps // self.args.timesteps
+            #     t_seq = range(0, self.num_timesteps, skip)
+            # elif self.args.skip_type == "quad":
+            #     t_seq = (
+            #         np.linspace(
+            #             0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
+            #         )
+            #         ** 2
+            #     )
+            #     t_seq = [int(s) for s in list(t_seq)]
+            # else:
+            #     raise NotImplementedError
+
             from functions.denoising import generalized_steps
 
-            xs = generalized_steps(x, t_seq, model, self.noise_schedule, eta=self.args.eta)
+            xs = generalized_steps(
+                x, t_seq, model, self.noise_schedule, self.args.final_denoise, eta=self.args.eta
+            )
             x = xs
         elif self.args.sample_type == "generalized_image":
             from functions.denoising import generalized_image_steps
 
-            xs = generalized_image_steps(x, t_seq, model, self.noise_schedule, eta=self.args.eta)
+            xs = generalized_image_steps(
+                x, t_seq, model, self.noise_schedule, self.args.final_denoise, eta=self.args.eta
+            )
             x = xs
 
         elif self.args.sample_type == "ddpm_noisy":
