@@ -106,7 +106,7 @@ def parse_args_and_config():
     # distributed training parameters
     parser.add_argument('--distributed', action="store_true",
                         )
-    parser.add_argument('--world_size', default=1, type=int,
+    parser.add_argument('--world_size', default=4, type=int,
                         help='number of distributed processes')
     parser.add_argument('--local_rank', default=os.getenv('LOCAL_RANK', 0), type=int)  # prev default was -1
     parser.add_argument('--dist_on_itp', action='store_true')
@@ -246,13 +246,16 @@ def dict2namespace(config):
     return namespace
 
 
-def main():
-    args, config = parse_args_and_config()
+def main(args):
+    #args, config = parse_args_and_config()
     logging.info("Writing log file to {}".format(args.log_path))
     logging.info("Exp instance id = {}".format(os.getpid()))
     logging.info("Exp comment = {}".format(args.comment))
+    print('before_init')
+
     misc.init_distributed_mode(args)
-    device = torch.device(args.device)
+    print('in main after init')
+    #device = torch.device(args.device)
 
     # fix the seed for reproducibility
     seed = args.seed + misc.get_rank()
@@ -277,4 +280,5 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    args, config = parse_args_and_config()
+    sys.exit(main(args))

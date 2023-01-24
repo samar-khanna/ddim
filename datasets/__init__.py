@@ -178,7 +178,7 @@ def get_dataset(args, config):
         test_dataset = Subset(dataset, test_indices)
         dataset = Subset(dataset, train_indices)
     elif config.data.dataset=='FMOW':
-
+        print('in fmow dataset')
         dataset = build_fmow_dataset(is_train=True, config=config)
         test_dataset= build_fmow_dataset(is_train=False, config=config)
     else:

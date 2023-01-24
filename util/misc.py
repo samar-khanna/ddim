@@ -239,18 +239,35 @@ def init_distributed_mode(args):
     args.distributed = True
 
     torch.cuda.set_device(args.gpu)
-
     args.dist_backend = 'nccl'
     print('| distributed init (rank {}): {}, gpu {}, world size {}'.format(
         args.rank, args.dist_url, args.gpu, args.world_size), flush=True)
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                          world_size=args.world_size, rank=args.rank)
-    print('after init')
-
     torch.distributed.barrier()
-    print('after_barrair')
     setup_for_distributed(args.rank == 0)
 
+
+# def init_distributed_mode(args):
+#
+#     # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
+#     dist_url = "env://" # default
+#
+#     # only works with torch.distributed.launch // torch.run
+#     rank = int(os.environ["RANK"])
+#     world_size = int(os.environ['WORLD_SIZE'])
+#     local_rank = int(os.environ['LOCAL_RANK'])
+#     dist.init_process_group(
+#             backend="nccl",
+#             init_method=dist_url,
+#             world_size=world_size,
+#             rank=rank)
+#
+#     # this will make all .cuda() calls work properly
+#     torch.cuda.set_device(local_rank)
+#
+#     # synchronizes all the threads to reach this point before moving on
+#     dist.barrier()
 
 class NativeScalerWithGradNormCount:
     state_dict_key = "amp_scaler"

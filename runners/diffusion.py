@@ -438,6 +438,7 @@ class Diffusion(object):
         config = self.config
         img_id = len(glob.glob(f"{self.args.image_folder}/*"))
         print(f"starting from image {img_id}")
+        print('folder: ',self.args.image_folder)
         total_n_samples = 50000
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 

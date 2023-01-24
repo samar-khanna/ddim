@@ -63,6 +63,8 @@ class SatelliteDataset(Dataset):
         interpol_mode = transforms.InterpolationMode.BICUBIC
 
         t = []
+        print('input_size ',input_size)
+        t.append( transforms.Resize(input_size, interpolation=interpol_mode),)
         if is_train:
             t.append(transforms.ToTensor())
             t.append(transforms.Normalize(mean, std))
@@ -469,6 +471,8 @@ class SentinelIndividualImageDataset(SatelliteDataset):
         interpol_mode = transforms.InterpolationMode.BICUBIC
 
         t = []
+        print('input size',input_size)
+        t.append( transforms.Resize(input_size, interpolation=interpol_mode),)
         if is_train:
             t.append(SentinelNormalize(mean, std))  # use specific Sentinel normalization to avoid NaN
             t.append(transforms.ToTensor())
@@ -560,6 +564,7 @@ def build_fmow_dataset(is_train: bool, config) -> SatelliteDataset:
         mean = CustomDatasetFromImages.mean
         std = CustomDatasetFromImages.std
         transform = CustomDatasetFromImages.build_transform(is_train, config.data.input_size, mean, std)
+        print('fmow_transform ',transform)
         dataset = CustomDatasetFromImages(csv_path, transform)
     elif args.dataset_type == 'temporal':
         dataset = CustomDatasetFromImagesTemporal(csv_path)
