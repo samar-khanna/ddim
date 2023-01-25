@@ -17,7 +17,7 @@ import torch.nn as nn
 import timm.models.vision_transformer
 
 from models.pos_embed import get_2d_sincos_pos_embed
-from models.time_embed import get_timestep_embedding, ZerosLike
+from models.time_embed import get_timestep_embedding, timestep_embedding, ZerosLike
 
 
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
@@ -152,9 +152,8 @@ class ViTFinetune(VisionTransformer):
 
         # embed time
         if self.use_temb:
-            t = torch.zeros(B//2 + 1, device=x.device)
-            t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:B]
-            time = get_timestep_embedding(t, x.shape[-1])  # (N, D)
+            t = torch.zeros(B, device=x.device)
+            time = timestep_embedding(t, x.shape[-1])  # (N, D)
             time = time.unsqueeze(1)  # (N, 1, D)
             temb = self.temb(time)  # (N, 1, D_t)
 
