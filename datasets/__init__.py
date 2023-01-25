@@ -31,7 +31,7 @@ class Normalize:
     def __init__(self, config):
         self.config = config
 
-    def forward(self, x):
+    def __call__(self, x, *args, **kwargs):
         return data_transform(self.config, x)
 
 
