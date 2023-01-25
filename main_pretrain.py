@@ -50,10 +50,10 @@ def get_args_parser():
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
     # Model parameters
-    parser.add_argument('--model_type', default=None, choices=['group_c', 'temporal', 'vanilla'],
-                        help='Use channel model')
-    parser.add_argument('--model', default='mae_vit_large_patch16', type=str, metavar='MODEL',
-                        help='Name of model to train')
+    # parser.add_argument('--model_type', default=None, choices=['group_c', 'temporal', 'vanilla'],
+    #                     help='Use channel model')
+    # parser.add_argument('--model', default='mae_vit_large_patch16', type=str, metavar='MODEL',
+    #                     help='Name of model to train')
 
     # parser.add_argument('--input_size', default=224, type=int,
     #                     help='images input size')
