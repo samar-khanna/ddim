@@ -268,8 +268,7 @@ def main(args):
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
     # Define the model
-    if args.model_type == 'vit':
-        model = get_model(config)
+    model = get_model(config)
 
     if args.finetune and not args.eval:
         checkpoint = torch.load(args.finetune, map_location='cpu')
