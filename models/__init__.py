@@ -1,8 +1,10 @@
 from models.models_unet import UNet
+from models.unet_enc import UNetFinetune
 from models.models_vit import VisionTransformer, ViTFinetune
 from models.models_uvit import UVisionTransformer
 from models.models_mae import MaskedAutoencoderViT
 from models.models_umae import UMaskedAutoencoderViT
+from models.mae_orig import PretrainMAE
 
 
 def get_model(config):
@@ -15,6 +17,15 @@ def get_model(config):
         resolution = config.data.image_size
         resamp_with_conv = config.model.resamp_with_conv
         num_timesteps = config.diffusion.num_diffusion_timesteps
+
+        is_finetune = getattr(config.model, 'finetune', False)
+        if is_finetune:
+            nb_classes = config.model.nb_classes
+            return UNetFinetune(
+                img_size=resolution, in_ch=in_channels, dim=ch, out_ch=nb_classes,
+                ch_mult=ch_mult, num_res_blocks=num_res_blocks, attn_resolutions=attn_resolutions,
+                dropout=dropout, resample_with_conv=resamp_with_conv
+            )
 
         return UNet(
             img_size=resolution,
@@ -171,5 +182,27 @@ def get_model(config):
             skip_rate=skip_rate,
             use_final_conv=use_final_conv,
         )
+
+    elif config.model.type == 'pretrain_mae':
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+
+        embed_dim = config.model.encoder.embed_dim
+        depth = config.model.encoder.depth
+        num_attn_heads = config.model.encoder.num_heads
+
+        decoder_embed_dim = config.model.decoder.embed_dim
+        decoder_depth = config.model.decoder.depth
+        decoder_num_heads = config.model.decoder.num_heads
+
+        mlp_ratio = config.model.mlp_ratio
+
+        return PretrainMAE(img_size=img_size, patch_size=patch_size, in_chans=in_channels,
+                           embed_dim=embed_dim, depth=depth, num_heads=num_attn_heads,
+                           decoder_embed_dim=decoder_embed_dim, decoder_depth=decoder_depth,
+                           decoder_num_heads=decoder_num_heads,
+                           mlp_ratio=mlp_ratio)
+
     else:
         raise NotImplementedError("Wrong model type")
