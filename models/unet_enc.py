@@ -78,11 +78,14 @@ class UNetFinetune(nn.Module):
         self.out_norm = Normalize(block_in)
         self.head = nn.Linear(block_in, out_ch)
 
-    def forward(self, x, t):
+    def forward(self, x):
         assert x.shape[2] == x.shape[3] == self.resolution
 
+        B = x.shape[0]
+        t = torch.zeros(B, device=x.device)
+        temb = timestep_embedding(t, self.temb_ch)  # (N, D)
+
         # timestep embedding
-        temb = timestep_embedding(t, self.ch)
         temb = self.temb.dense[0](temb)
         temb = nonlinearity(temb)
         temb = self.temb.dense[1](temb)
