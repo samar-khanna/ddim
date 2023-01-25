@@ -428,6 +428,8 @@ def main(args):
                 wandb.log(log_stats)
             except ValueError:
                 print(f"Invalid stats?")
+            except wandb.errors.Error:
+                print("Wandb not initialized")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
