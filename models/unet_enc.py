@@ -83,7 +83,7 @@ class UNetFinetune(nn.Module):
 
         B = x.shape[0]
         t = torch.zeros(B, device=x.device)
-        temb = timestep_embedding(t, self.temb_ch)  # (N, D)
+        temb = timestep_embedding(t, self.ch)  # (N, D)
 
         # timestep embedding
         temb = self.temb.dense[0](temb)
