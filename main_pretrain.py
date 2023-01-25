@@ -104,6 +104,7 @@ def get_args_parser():
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--resume', default='',
                         help='resume from checkpoint')
+    parser.add_argument('--save_every', type=int, default=20, help='How frequently (in epochs) to save ckpt')
     parser.add_argument('--wandb', type=str, default=None,
                         help="Wandb project name, eg: sentinel_pretrain")
 
@@ -261,7 +262,7 @@ def main(args):
                 args=args
             )
 
-        if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
+        if args.output_dir and (epoch % args.save_every == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
