@@ -12,15 +12,15 @@ data:
 model:
     type: "pretrain_mae"
     in_channels: 3
-        patch_size: 2
-        encoder:
-            embed_dim: 384
-            depth: 12
-            num_heads: 6
-        decoder:
-            embed_dim: 384
-            depth: 12
-            num_heads: 6
+    patch_size: 2
+    encoder:
+        embed_dim: 384
+        depth: 12
+        num_heads: 6
+    decoder:
+        embed_dim: 384
+        depth: 12
+        num_heads: 6
 
     dropout: 0.1
     mlp_ratio: 4
