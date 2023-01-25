@@ -237,8 +237,9 @@ def main(args):
 
     # Set up wandb
     if global_rank == 0 and args.wandb is not None:
-        wandb.init(project=args.wandb, entity="mae-sentinel")
+        wandb.init(project=args.wandb, entity="bias_migitation")
         wandb.config.update(args)
+        wandb.config.update(config)
         wandb.watch(model)
 
     print(f"Start training for {args.epochs} epochs")
