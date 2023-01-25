@@ -27,22 +27,44 @@ class Crop(object):
         )
 
 
+class Normalize:
+    def __init__(self, config):
+        self.config = config
+
+    def forward(self, x):
+        return data_transform(self.config, x)
+
+
 def get_dataset(args, config):
-    if config.data.random_flip is False:
-        tran_transform = test_transform = transforms.Compose(
-            [transforms.Resize(config.data.image_size), transforms.ToTensor()]
-        )
+    if getattr(config.model, 'finetune', False):
+        tran_transform = transforms.Compose([
+            transforms.RandomResizedCrop(config.data.image_size),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.ToTensor(),
+            Normalize(config),
+        ])
+        test_transform = transforms.Compose([
+            transforms.Resize(config.data.image_size),
+            transforms.CenterCrop(config.data.image_size),
+            transforms.ToTensor(),
+            Normalize(config)
+        ])
     else:
-        tran_transform = transforms.Compose(
-            [
-                transforms.Resize(config.data.image_size),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ToTensor(),
-            ]
-        )
-        test_transform = transforms.Compose(
-            [transforms.Resize(config.data.image_size), transforms.ToTensor()]
-        )
+        if config.data.random_flip is False:
+            tran_transform = test_transform = transforms.Compose(
+                [transforms.Resize(config.data.image_size), transforms.ToTensor()]
+            )
+        else:
+            tran_transform = transforms.Compose(
+                [
+                    transforms.Resize(config.data.image_size),
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.ToTensor(),
+                ]
+            )
+            test_transform = transforms.Compose(
+                [transforms.Resize(config.data.image_size), transforms.ToTensor()]
+            )
 
     if config.data.dataset == "CIFAR10":
         dataset = CIFAR10(
