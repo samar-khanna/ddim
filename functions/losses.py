@@ -14,9 +14,9 @@ def noise_estimation_loss(model,
     # output = model(x, t.float() * noise_schedule.total_N - 1)  # Note: scale T to between 0 and total_N for backward compatibility
     output = model(x, t.float())
     if keepdim:
-        return (e - output).square().sum(dim=(1, 2, 3))
+        return (e - output).square().mean(dim=(1, 2, 3))
     else:
-        return (e - output).square().sum(dim=(1, 2, 3)).mean(dim=0)
+        return (e - output).square().mean(dim=(1, 2, 3)).mean(dim=0)
 
 
 def snr_image_loss(
