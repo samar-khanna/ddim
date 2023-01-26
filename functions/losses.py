@@ -11,7 +11,8 @@ def noise_estimation_loss(model,
     a = noise_schedule.marginal_alpha(t).view(-1, 1, 1, 1)
     sigma = noise_schedule.marginal_std(t).view(-1, 1, 1, 1)
     x = x0 * a + e * sigma
-    output = model(x, t.float() * noise_schedule.total_N - 1)  # Note: scale T to between 0 and total_N for backward compatibility
+    # output = model(x, t.float() * noise_schedule.total_N - 1)  # Note: scale T to between 0 and total_N for backward compatibility
+    output = model(x, t.float())
     if keepdim:
         return (e - output).square().sum(dim=(1, 2, 3))
     else:

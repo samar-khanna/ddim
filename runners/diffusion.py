@@ -201,7 +201,7 @@ class Diffusion(object):
                 # t = torch.randint(
                 #     low=0, high=self.num_timesteps, size=(n // 2 + 1,)
                 # ).to(self.device)
-                t = torch.cat([t, (1.0 - t).clamp(max=0.999)], dim=0)[:n]
+                t = torch.cat([t, (1.0 - t).clamp(min=0.0, max=0.999)], dim=0)[:n]
                 loss = loss_registry[config.model.type](model, x, t, e, self.noise_schedule)
 
                 optimizer.zero_grad()
