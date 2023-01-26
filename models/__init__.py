@@ -204,7 +204,7 @@ def get_model(config):
             return VisionTransformerFinetuneOrig(
                 img_size=img_size, patch_size=patch_size, in_chans=in_channels, num_classes=nb_classes,
                 embed_dim=embed_dim, depth=depth, num_heads=num_attn_heads, mlp_ratio=mlp_ratio,
-                drop_rate=dropout, global_pool=True,
+                drop_rate=dropout, global_pool=True, qkv_bias=True,
             )
 
         return PretrainMAE(img_size=img_size, patch_size=patch_size, in_chans=in_channels,
