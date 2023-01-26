@@ -37,8 +37,9 @@ class Normalize:
 
 def get_dataset(args, config):
     if getattr(config.model, 'finetune', False):
+        print("Specific finetune data transforms")
         tran_transform = transforms.Compose([
-            transforms.RandomResizedCrop(config.data.image_size),
+            transforms.RandomResizedCrop(config.data.image_size, scale=(0.4, 1.0)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
             Normalize(config),
