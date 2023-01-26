@@ -138,6 +138,8 @@ class ViTFinetune(VisionTransformer):
         embed_dim = kwargs['embed_dim']
         self.fc_norm = norm_layer(embed_dim)
 
+        self.pos_embed.requires_grad = True
+
         del self.decoder_pred
         del self.final_conv
 

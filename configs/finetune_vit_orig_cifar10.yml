@@ -1,0 +1,29 @@
+data:
+    dataset: "CIFAR10"
+    image_size: 32
+    channels: 3
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: true
+    rescaled: true
+    num_workers: 4
+
+model:
+    type: "vit_orig"
+    in_channels: 3
+    patch_size: 2
+    temb_dim: 512
+    embed_dim: 384
+    depth: 12
+    num_heads: 6
+
+    nb_classes: 10
+    finetune: true
+
+    dropout: 0.2
+    mlp_ratio: 4
+
+    var_type: fixedlarge
+    ema_rate: 0.9999
+    ema: True

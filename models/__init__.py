@@ -4,7 +4,7 @@ from models.models_vit import VisionTransformer, ViTFinetune
 from models.models_uvit import UVisionTransformer
 from models.models_mae import MaskedAutoencoderViT
 from models.models_umae import UMaskedAutoencoderViT
-from models.mae_orig import PretrainMAE
+from models.mae_orig import PretrainMAE, VisionTransformerFinetuneOrig
 
 
 def get_model(config):
@@ -183,7 +183,7 @@ def get_model(config):
             use_final_conv=use_final_conv,
         )
 
-    elif config.model.type == 'pretrain_mae':
+    elif config.model.type in ('pretrain_mae', 'vit_orig'):
         img_size = config.data.image_size
         patch_size = config.model.patch_size
         in_channels = config.model.in_channels
@@ -197,6 +197,15 @@ def get_model(config):
         decoder_num_heads = config.model.decoder.num_heads
 
         mlp_ratio = config.model.mlp_ratio
+
+        if getattr(config.model, 'finetune', False):
+            nb_classes = config.model.nb_classes
+            dropout = config.model.dropout
+            return VisionTransformerFinetuneOrig(
+                img_size=img_size, patch_size=patch_size, in_chans=in_channels, num_classes=nb_classes,
+                embed_dim=embed_dim, depth=depth, num_heads=num_attn_heads, mlp_ratio=mlp_ratio,
+                drop_rate=dropout, global_pool=True,
+            )
 
         return PretrainMAE(img_size=img_size, patch_size=patch_size, in_chans=in_channels,
                            embed_dim=embed_dim, depth=depth, num_heads=num_attn_heads,
