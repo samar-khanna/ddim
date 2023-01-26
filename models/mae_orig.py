@@ -238,7 +238,7 @@ class VisionTransformerFinetuneOrig(VisionTransformer):
 
         self.global_pool = global_pool
         if self.global_pool:
-            norm_layer = kwargs['norm_layer']
+            norm_layer = nn.LayerNorm
             embed_dim = kwargs['embed_dim']
             self.fc_norm = norm_layer(embed_dim)
 
