@@ -13,10 +13,11 @@ model:
     type: "vit_orig"
     in_channels: 3
     patch_size: 2
-    temb_dim: 512
-    embed_dim: 384
-    depth: 12
-    num_heads: 6
+
+    encoder:
+        embed_dim: 384
+        depth: 12
+        num_heads: 6
 
     nb_classes: 10
     finetune: true
