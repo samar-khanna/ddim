@@ -16,15 +16,15 @@ model:
     temb_dim: 512
     encoder:
         embed_dim: 384
-        depth: 10
+        depth: 12
         num_heads: 6
     decoder:
         embed_dim: 384
-        depth: 10
+        depth: 12
         num_heads: 6
 
     use_add_skip: true
-    skip_idxs: [[1, 8], [3, 6], [5, 4], [7, 2]]
+    skip_idxs: [[1, 10], [3, 8], [5, 6], [7, 4], [9, 2]]
     use_final_conv: true
 
     dropout: 0.1
