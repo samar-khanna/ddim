@@ -241,7 +241,7 @@ class DDPMaskedAutoencoder(nn.Module):
                 prev_x = prev_xs[i]
                 if self.use_add_skip:
                     zeros = torch.zeros(
-                        x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1, device=x.device, dtype=x.dtype
+                        x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], x.shape[2], device=x.device, dtype=x.dtype
                     )
                     prev_x_ = torch.cat([prev_x[:, 1:, :], zeros], dim=1)  # no cls token
                     prev_x_ = torch.gather(prev_x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))
