@@ -5,6 +5,7 @@ from models.models_uvit import UVisionTransformer
 from models.models_mae import MaskedAutoencoderViT
 from models.models_umae import UMaskedAutoencoderViT
 from models.mae_orig import PretrainMAE, VisionTransformerFinetuneOrig
+from models.models_ddpmae import DDPMaskedAutoencoder
 
 
 def get_model(config):
@@ -212,6 +213,37 @@ def get_model(config):
                            decoder_embed_dim=decoder_embed_dim, decoder_depth=decoder_depth,
                            decoder_num_heads=decoder_num_heads,
                            mlp_ratio=mlp_ratio)
+
+    elif config.model.type in ('ddpmae',):
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+
+        embed_dim = config.model.encoder.embed_dim
+        depth = config.model.encoder.depth
+        num_attn_heads = config.model.encoder.num_heads
+
+        decoder_embed_dim = config.model.decoder.embed_dim
+        decoder_depth = config.model.decoder.depth
+        decoder_num_heads = config.model.decoder.num_heads
+
+        mask_ratio = config.model.mask_ratio
+
+        use_final_conv = config.model.use_final_conv
+        skip_idxs = dict(config.model.skip_idxs)
+        use_add_skip = config.model.use_add_skip
+
+        temb_dim = config.model.temb_dim
+        mlp_ratio = config.model.mlp_ratio
+        dropout = config.model.dropout
+
+        return DDPMaskedAutoencoder(
+            img_size=img_size, patch_size=patch_size, in_chans=in_channels,
+            embed_dim=embed_dim, depth=depth, num_heads=num_attn_heads,
+            decoder_embed_dim=decoder_embed_dim, decoder_depth=decoder_depth, decoder_num_heads=decoder_num_heads,
+            temb_dim=temb_dim, dropout=dropout, mlp_ratio=mlp_ratio, mask_ratio=mask_ratio,
+            use_add_skip=use_add_skip, skip_idxs=skip_idxs, use_final_conv=use_final_conv,
+        )
 
     else:
         raise NotImplementedError("Wrong model type")
