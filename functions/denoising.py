@@ -49,7 +49,8 @@ def generalized_steps(x, seq, model, noise_schedule, final_denoise, **kwargs):
             phi_1 = torch.expm1(h)
 
             x_prev = xs[-1].to(x.device)
-            model_s = model(x_prev, (s_vec + 1.)/ns.total_N)  # Note: scale s to between 0 and total_N for backward compatibility
+            # model_s = model(x_prev, (s_vec + 1.)/ns.total_N)  # Note: scale s to between 0 and total_N for backward compatibility
+            model_s = model(x_prev, s_vec)
             x_next = (
                     expand_dims(torch.exp(log_alpha_t - log_alpha_s), dims) * x_prev
                     - expand_dims(sigma_t * phi_1, dims) * model_s
