@@ -248,6 +248,9 @@ class Diffusion(object):
 
     def sample(self):
         model = get_model(self.config)
+        if getattr(model, 'mask_ratio', False):
+            print("Setting mask ratio to 0. for ddpmae")
+            model.mask_ratio = 0.
 
         if not self.args.use_pretrained:
             if getattr(self.config.sampling, "ckpt_id", None) is None:
