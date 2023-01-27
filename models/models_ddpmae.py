@@ -224,9 +224,10 @@ class DDPMaskedAutoencoder(nn.Module):
     def forward_decoder(self, x, prev_xs, temb, mask, ids_restore):
         # embed tokens
         x = self.decoder_embed(x)  # (N, L, D')
+        mask_L = x.shape[1]  # num tokens after masking, before restore
 
         # append mask tokens to sequence
-        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - mask_L, 1)
         x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
         x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
@@ -241,7 +242,7 @@ class DDPMaskedAutoencoder(nn.Module):
                 prev_x = prev_xs[i]
                 if self.use_add_skip:
                     zeros = torch.zeros(
-                        x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], x.shape[2], device=x.device, dtype=x.dtype
+                        x.shape[0], ids_restore.shape[1] + 1 - mask_L, x.shape[2], device=x.device, dtype=x.dtype
                     )
                     prev_x_ = torch.cat([prev_x[:, 1:, :], zeros], dim=1)  # no cls token
                     prev_x_ = torch.gather(prev_x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))
