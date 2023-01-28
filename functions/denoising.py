@@ -62,7 +62,8 @@ def generalized_steps(x, seq, model, noise_schedule, final_denoise, **kwargs):
             t_vec = (torch.ones(n) * seq[-1].item()).to(x.device)  # t0
 
             x_prev = xs[-1].to(x.device)
-            eps_pred = model(x_prev, (t_vec + 1.) / ns.total_N)  # Note: scale s to between 0 and total_N for backward compatibility
+            # eps_pred = model(x_prev, (t_vec + 1.) / ns.total_N)  # Note: scale s to between 0 and total_N for backward compatibility
+            eps_pred = model(x_prev, t_vec)
             alpha_t, sigma_t = ns.marginal_alpha(t), ns.marginal_std(t)
             x0_pred = (x_prev - expand_dims(sigma_t, dims) * eps_pred) / expand_dims(alpha_t, dims)
 
