@@ -63,4 +63,6 @@ loss_registry = {
     'umae_x': snr_image_loss,
     'uvit': noise_estimation_loss,
     'ddpmae': snr_image_loss,
+    'dit': noise_estimation_loss,
+    'dit_x': snr_image_loss,
 }

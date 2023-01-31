@@ -6,6 +6,7 @@ from models.models_mae import MaskedAutoencoderViT
 from models.models_umae import UMaskedAutoencoderViT
 from models.mae_orig import PretrainMAE, VisionTransformerFinetuneOrig
 from models.models_ddpmae import DDPMaskedAutoencoder
+from models.models_dit import DiT
 
 
 def get_model(config):
@@ -244,6 +245,21 @@ def get_model(config):
             temb_dim=temb_dim, dropout=dropout, mlp_ratio=mlp_ratio, mask_ratio=mask_ratio,
             use_add_skip=use_add_skip, skip_idxs=skip_idxs, use_final_conv=use_final_conv,
         )
+
+    elif config.model.type in ('dit', 'dit_x'):
+        img_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+
+        hidden_size = config.model.hidden_size
+        depth = config.model.depth
+        num_heads = config.model.num_heads
+        mlp_ratio = config.model.mlp_ratio
+        learn_sigma = config.model.learn_sigma
+
+        return DiT(input_size=img_size, patch_size=patch_size, in_channels=in_channels,
+                   hidden_size=hidden_size, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio,
+                   learn_sigma=learn_sigma)
 
     else:
         raise NotImplementedError("Wrong model type")
