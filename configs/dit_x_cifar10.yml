@@ -13,9 +13,9 @@ model:
     type: "dit_x"
     in_channels: 3
     patch_size: 2
-    hidden_size: 768
+    hidden_size: 384
     depth: 12
-    num_heads: 12
+    num_heads: 6
     mlp_ratio: 4.0
     learn_sigma: False
 
