@@ -63,15 +63,15 @@ class SatelliteDataset(Dataset):
         interpol_mode = transforms.InterpolationMode.BICUBIC
 
         t = []
-        print('input_size ',input_size)
-        t.append( transforms.Resize(input_size, interpolation=interpol_mode),)
+        t.append(transforms.Resize((input_size,input_size), interpolation=interpol_mode))
         if is_train:
+           # t.append(SentinelNormalize(mean,std))
             t.append(transforms.ToTensor())
-            t.append(transforms.Normalize(mean, std))
-            t.append(
-                transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0), interpolation=interpol_mode),  # 3 is bicubic
-            )
-            t.append(transforms.RandomHorizontalFlip())
+          #  t.append(transforms.Normalize(mean, std))
+            #t.append(
+            #    transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0), interpolation=interpol_mode),  # 3 is bicubic
+            #)
+            #t.append(transforms.RandomHorizontalFlip())
             return transforms.Compose(t)
 
         # eval transform
@@ -81,6 +81,7 @@ class SatelliteDataset(Dataset):
             crop_pct = 1.0
         size = int(input_size / crop_pct)
 
+        #t.append(SentinelNormalize(mean,std))
         t.append(transforms.ToTensor())
         t.append(transforms.Normalize(mean, std))
         t.append(
@@ -355,16 +356,23 @@ class SentinelNormalize:
     """
 
     def __init__(self, mean, std):
-        self.mean = np.array(mean)
-        self.std = np.array(std)
+        self.mean = np.array(mean).reshape(1,1,-1)
+        self.std = np.array(std).reshape(1,1,-1)
 
     def __call__(self, x, *args, **kwargs):
         min_value = self.mean - 2 * self.std
         max_value = self.mean + 2 * self.std
-        img = (x - min_value) / (max_value - min_value) * 255.0
-        img = np.clip(img, 0, 255).astype(np.uint8)
-        return img
+        #print(x.shape)
+        img = (x - min_value) / (max_value - min_value) 
+        #* 255.0
+        #img = np.clip(img, 0, 255).astype(np.uint8)
+        return img 
 
+    def reversed(self,x):
+        min_value = self.mean - 2 * self.std
+        max_value = self.mean + 2 * self.std
+        x = x *(max_value-min_value) + min_value
+        return  x
 
 class SentinelIndividualImageDataset(SatelliteDataset):
     label_types = ['value', 'one-hot']
@@ -471,8 +479,6 @@ class SentinelIndividualImageDataset(SatelliteDataset):
         interpol_mode = transforms.InterpolationMode.BICUBIC
 
         t = []
-        print('input size',input_size)
-        t.append( transforms.Resize(input_size, interpolation=interpol_mode),)
         if is_train:
             t.append(SentinelNormalize(mean, std))  # use specific Sentinel normalization to avoid NaN
             t.append(transforms.ToTensor())
@@ -551,7 +557,7 @@ class EuroSat(SatelliteDataset):
         return img_as_tensor, label
 
 
-def build_fmow_dataset(is_train: bool, config) -> SatelliteDataset:
+def build_fmow_dataset(is_train: bool,config) -> SatelliteDataset:
     """
     Initializes a SatelliteDataset object given provided args.
     :param is_train: Whether we want the dataset for training or evaluation
@@ -563,8 +569,7 @@ def build_fmow_dataset(is_train: bool, config) -> SatelliteDataset:
     if config.data.dataset_type == 'rgb':
         mean = CustomDatasetFromImages.mean
         std = CustomDatasetFromImages.std
-        transform = CustomDatasetFromImages.build_transform(is_train, config.data.input_size, mean, std)
-        print('fmow_transform ',transform)
+        transform = CustomDatasetFromImages.build_transform(is_train,config.data.image_size, mean, std)
         dataset = CustomDatasetFromImages(csv_path, transform)
     elif args.dataset_type == 'temporal':
         dataset = CustomDatasetFromImagesTemporal(csv_path)

@@ -7,6 +7,8 @@ from models.models_umae import UMaskedAutoencoderViT
 
 from models.models_vit import ViTFinetune
 
+from models.models_dit import DiT
+
 
 def get_model(config):
     if config.model.type == "unet" or config.model.type == "simple":
@@ -57,6 +59,27 @@ def get_model(config):
             decoder_num_heads=decoder_num_heads,
             mlp_ratio=mlp_ratio,
         )
+    elif config.model.type== 'dit':
+        input_size = config.data.image_size
+        patch_size = config.model.patch_size
+        in_channels = config.model.in_channels
+        hidden_size = config.model.encoder.embed_dim
+        depth = config.model.encoder.depth
+        num_heads = config.model.encoder.num_heads
+        mlp_ratio =  config.model.mlp_ratio
+        learn_sigma = False
+
+        return DiT(
+            input_size=input_size,
+            patch_size=patch_size,
+            in_channels=in_channels,
+            hidden_size=hidden_size,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio= mlp_ratio,
+
+            learn_sigma=learn_sigma,
+                   )
     elif config.model.type in ['umae', 'umae_x']:
         img_size = config.data.image_size
         patch_size = config.model.patch_size
@@ -140,7 +163,6 @@ def get_model(config):
         # act_layer = None,
         # block_fn = Block,
         if is_finetune:
-            print('in fine tune')
             use_temb = config.model.use_temb
             return ViTFinetune(
                 img_size=img_size,
@@ -159,13 +181,12 @@ def get_model(config):
         return VisionTransformer(
             img_size=img_size,
             patch_size=patch_size,
-            in_chans=in_chans,
+            in_chans=in_channels,
             embed_dim=embed_dim,
             depth=depth,
-            num_heads=num_heads,
+            num_heads=num_attn_heads,
             mlp_ratio=mlp_ratio,
-            num_classes=num_classes,
-            use_generative=use_generative
+            num_classes=nb_classes,
         )
     # elif config.model.type == "vit_segm":
     #     # img_size = config.data.image_size

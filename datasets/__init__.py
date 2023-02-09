@@ -10,7 +10,7 @@ from datasets.lsun import LSUN
 from torch.utils.data import Subset
 import numpy as np
 
-from datasets.fmow import build_fmow_dataset
+from datasets.fmow import build_fmow_dataset , CustomDatasetFromImages
 
 
 class Crop(object):
@@ -210,6 +210,17 @@ def data_transform(config, X):
 
 
 def inverse_data_transform(config, X):
+    #if config.data.dataset == "FMOW":
+     #   print(X.shape)
+      
+      #print(CustomDatasetFromImages.std)
+       
+      
+      # X = (X * torch.tensor(CustomDatasetFromImages.std).reshape(1,-1,1,1)) + torch.tensor(CustomDatasetFromImages.mean).reshape(1,-1,1,1)
+     
+     #mean=torch.tensor(CustomDatasetFromImages.mean)
+      #std=torch.tensor(CustomDatasetFromImages.std)
+     # X=transforms.Normalize((-mean / std).tolist(), (1.0 / std).tolist())(X)
     if hasattr(config, "image_mean"):
         X = X + config.image_mean.to(X.device)[None, ...]
 

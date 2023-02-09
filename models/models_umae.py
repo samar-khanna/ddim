@@ -22,8 +22,10 @@ class UMaskedAutoencoderViT(nn.Module):
                  embed_dim=1024, depth=24, num_heads=16,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  temb_dim=0, dropout=0.1,
+
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False,
-                 use_add_skip=False, skip_idxs={2: 10, 5: 7, 8: 4, 11: 1}, use_final_conv=True,):
+                 use_add_skip=False, skip_idxs={2: 10, 5: 7, 8: 4, 11: 1}, use_final_conv=True):
+                 #use_downsample=False):
         super().__init__()
 
         self.in_c = in_chans
@@ -44,7 +46,12 @@ class UMaskedAutoencoderViT(nn.Module):
                 nn.Sequential(nn.SiLU(), nn.Linear(temb_dim, embed_dim))
                 for _ in range(depth)])
 
-        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        use_downsample=False
+        if not use_downsample:
+             self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        
+        else:
+             self.patch_embed= PatchEmbed(32, patch_size , in_chans, embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -100,6 +107,10 @@ class UMaskedAutoencoderViT(nn.Module):
 
         self.final_conv = nn.Conv2d(self.in_c, self.in_c, kernel_size=3, stride=1, padding='same') \
             if use_final_conv else nn.Identity()
+        if use_downsample:
+            self.downsample=torch.nn.Conv2d(self.in_c, self.in_c, kernel_size=7, stride=7)
+        else:
+            nn.Identity()
 
         self.initialize_weights()
 
@@ -171,6 +182,7 @@ class UMaskedAutoencoderViT(nn.Module):
 
     def forward_encoder(self, x, mask_ratio, time):
         # embed patches
+        ###x = self.downsample(x)
         x = self.patch_embed(x)  # (N, L, D)
 
         # embed time

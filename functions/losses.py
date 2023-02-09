@@ -6,9 +6,11 @@ def noise_estimation_loss(model,
                           t: torch.LongTensor,
                           e: torch.Tensor,
                           b: torch.Tensor, keepdim=False):
+    #print(x0.shape)
     a = (1-b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
     x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
     output = model(x, t.float())
+    print(output.shape)
     if keepdim:
         return (e - output).square().sum(dim=(1, 2, 3))
     else:
@@ -22,5 +24,6 @@ loss_registry = {
     'vit':noise_estimation_loss,
     'vit_segm': noise_estimation_loss,
     'umae': noise_estimation_loss,
+    'dit': noise_estimation_loss,
 
 }

@@ -12,14 +12,14 @@ data:
 model:
     type: "umae"
     in_channels: 3
-    patch_size: 2
+    patch_size: 4
     temb_dim: 512
     encoder:
-        embed_dim: 384
+        embed_dim: 768
         depth: 12
         num_heads: 6
     decoder:
-        embed_dim: 384
+        embed_dim: 768
         depth: 12
         num_heads: 6
 
@@ -27,12 +27,12 @@ model:
     skip_idxs: [[1, 10], [3, 8], [5, 6], [7, 4], [9, 2]]
     use_final_conv: true
 
-    dropout: 0.1
+    dropout: 0.3
     mlp_ratio: 4
 
     var_type: fixedlarge
     ema_rate: 0.9999
-    ema: True
+    ema: False
 
 diffusion:
     beta_schedule: linear
@@ -41,7 +41,7 @@ diffusion:
     num_diffusion_timesteps: 1000
 
 training:
-    batch_size: 16
+    batch_size: 24
     n_epochs: 10000
     n_iters: 5000000
     snapshot_freq: 5000

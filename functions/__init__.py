@@ -6,6 +6,10 @@ def get_optimizer(config, parameters):
         return optim.Adam(parameters, lr=config.optim.lr, weight_decay=config.optim.weight_decay,
                           betas=(config.optim.beta1, 0.999), amsgrad=config.optim.amsgrad,
                           eps=config.optim.eps)
+    elif config.optim.optimizer == 'AdamW':
+                        return optim.AdamW(parameters, lr=config.optim.lr, weight_decay=config.optim.weight_decay,
+                                                          betas=(config.optim.beta1, 0.999), amsgrad=config.optim.amsgrad,
+                                                                                    eps=config.optim.eps)
     elif config.optim.optimizer == 'RMSProp':
         return optim.RMSprop(parameters, lr=config.optim.lr, weight_decay=config.optim.weight_decay)
     elif config.optim.optimizer == 'SGD':
